@@ -17,13 +17,15 @@ import {
   TrendingUp,
   Plus,
   Image,
-  X
+  X,
 } from 'lucide-react';
+
 import {
   familyMembers,
   familyEvents,
-  familyStories
+  familyStories,
 } from '../data/familyData';
+
 import { supabase } from '../lib/supabaseClient';
 
 
@@ -46,7 +48,7 @@ type DbEvent = {
   location: string;
   description: string;
   type: string;
-  image?: string;
+  image?: string | null;
   rsvpCount?: number;
 };
 
@@ -83,7 +85,7 @@ const portalFeatures = [
     title: 'Family Chat',
     desc: 'Private family message board',
     color: 'from-blue-400 to-cyan-500',
-    count: '12 new'
+    count: '12 new',
   },
   {
     id: 'tree',
@@ -91,7 +93,7 @@ const portalFeatures = [
     title: 'Family Tree',
     desc: 'Interactive genealogy explorer',
     color: 'from-green-400 to-emerald-600',
-    count: '4 gen'
+    count: '4 gen',
   },
   {
     id: 'docs',
@@ -99,7 +101,7 @@ const portalFeatures = [
     title: 'Family Documents',
     desc: 'Shared important documents',
     color: 'from-orange-400 to-amber-500',
-    count: '28 files'
+    count: '28 files',
   },
   {
     id: 'events',
@@ -107,7 +109,7 @@ const portalFeatures = [
     title: 'My Events',
     desc: 'Your RSVPs and calendar',
     color: 'from-pink-400 to-rose-500',
-    count: '3 upcoming'
+    count: '3 upcoming',
   },
   {
     id: 'gallery',
@@ -115,7 +117,7 @@ const portalFeatures = [
     title: 'Private Gallery',
     desc: 'Member-only photos',
     color: 'from-purple-400 to-violet-600',
-    count: '145 photos'
+    count: '145 photos',
   },
   {
     id: 'settings',
@@ -123,36 +125,36 @@ const portalFeatures = [
     title: 'Settings',
     desc: 'Manage your profile',
     color: 'from-gray-400 to-slate-600',
-    count: ''
+    count: '',
   },
 ];
 
 
 // ============================================================
-// FALLBACK ANNOUNCEMENTS (shown alongside real ones)
+// FALLBACK ANNOUNCEMENTS
 // ============================================================
 
-const announcements = [
+const fallbackAnnouncements: DbAnnouncement[] = [
   {
-    id: '1',
+    id: 'fallback-1',
     title: 'Reunion 2025 Registration Open!',
     date: '2025-01-15',
     author: 'Kofi Kornu',
-    priority: 'high'
+    priority: 'high',
   },
   {
-    id: '2',
+    id: 'fallback-2',
     title: "Elder Kweku's Birthday Dinner Details",
     date: '2025-01-10',
     author: 'Ama Kornu-Mensah',
-    priority: 'medium'
+    priority: 'medium',
   },
   {
-    id: '3',
+    id: 'fallback-3',
     title: 'New Baby! Welcome Kweku Jr.!',
     date: '2025-01-05',
     author: 'Family Admin',
-    priority: 'high'
+    priority: 'high',
   },
 ];
 
@@ -167,50 +169,83 @@ export default function PortalPage() {
     isAuthenticated,
     currentUser,
     logout,
-    setCurrentPage
+    setCurrentPage,
   } = useStore();
+
+
+  // ==========================================================
+  // GENERAL STATE
+  // ==========================================================
 
   const [activeTab, setActiveTab] = useState('dashboard');
 
+
+  // ==========================================================
+  // MESSAGE STATE
+  // ==========================================================
+
   const [message, setMessage] = useState('');
-
   const [messages, setMessages] = useState<Message[]>([]);
-
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageError, setMessageError] = useState('');
 
 
   // ==========================================================
-  // EVENTS + ANNOUNCEMENTS + MEMBERS STATE
+  // DATABASE STATE
   // ==========================================================
 
   const [dbEvents, setDbEvents] = useState<DbEvent[]>([]);
-  const [dbAnnouncements, setDbAnnouncements] = useState<DbAnnouncement[]>([]);
+  const [dbAnnouncements, setDbAnnouncements] = useState<
+    DbAnnouncement[]
+  >([]);
   const [dbMembers, setDbMembers] = useState<DbMember[]>([]);
 
+
+  // ==========================================================
+  // MODAL STATE
+  // ==========================================================
+
   const [showEventForm, setShowEventForm] = useState(false);
-  const [showAnnouncementForm, setShowAnnouncementForm] = useState(false);
+  const [showAnnouncementForm, setShowAnnouncementForm] =
+    useState(false);
   const [showMemberForm, setShowMemberForm] = useState(false);
 
-  // New event form fields
+
+  // ==========================================================
+  // EVENT FORM STATE
+  // ==========================================================
+
   const [eventTitle, setEventTitle] = useState('');
   const [eventDate, setEventDate] = useState('');
   const [eventLocation, setEventLocation] = useState('');
   const [eventDescription, setEventDescription] = useState('');
   const [eventType, setEventType] = useState('celebration');
+
   const [postingEvent, setPostingEvent] = useState(false);
   const [eventFormError, setEventFormError] = useState('');
 
-  // New event image
-  const [eventImageFile, setEventImageFile] = useState<File | null>(null);
-  const [eventImagePreview, setEventImagePreview] = useState<string | null>(null);
+  const [eventImageFile, setEventImageFile] =
+    useState<File | null>(null);
 
-  // New announcement form fields
+  const [eventImagePreview, setEventImagePreview] =
+    useState<string | null>(null);
+
+
+  // ==========================================================
+  // ANNOUNCEMENT FORM STATE
+  // ==========================================================
+
   const [annTitle, setAnnTitle] = useState('');
   const [annPriority, setAnnPriority] = useState('medium');
+
   const [postingAnn, setPostingAnn] = useState(false);
   const [annFormError, setAnnFormError] = useState('');
 
-  // New member form fields
+
+  // ==========================================================
+  // MEMBER FORM STATE
+  // ==========================================================
+
   const [memberName, setMemberName] = useState('');
   const [memberRole, setMemberRole] = useState('');
   const [memberBio, setMemberBio] = useState('');
@@ -218,17 +253,30 @@ export default function PortalPage() {
   const [memberLocation, setMemberLocation] = useState('');
   const [memberOccupation, setMemberOccupation] = useState('');
   const [memberTags, setMemberTags] = useState('');
-  const [memberImageFile, setMemberImageFile] = useState<File | null>(null);
-  const [memberImagePreview, setMemberImagePreview] = useState<string | null>(null);
+
+  const [memberImageFile, setMemberImageFile] =
+    useState<File | null>(null);
+
+  const [memberImagePreview, setMemberImagePreview] =
+    useState<string | null>(null);
+
   const [postingMember, setPostingMember] = useState(false);
   const [memberFormError, setMemberFormError] = useState('');
 
 
   // ==========================================================
-  // FETCH EVENTS + ANNOUNCEMENTS + MEMBERS
+  // AUTHENTICATED USER CHECK
+  // ==========================================================
+
+  const isAdmin = currentUser?.role === 'admin';
+
+
+  // ==========================================================
+  // FETCH EVENTS
   // ==========================================================
 
   const fetchEvents = async () => {
+
     const { data, error } = await supabase
       .from('events')
       .select('*')
@@ -239,104 +287,234 @@ export default function PortalPage() {
       return;
     }
 
-    if (data) {
-      setDbEvents(
-        data.map((e: any) => ({
-          id: e.id,
-          title: e.title,
-          date: e.date,
-          location: e.location,
-          description: e.description,
-          type: e.type,
-          image: e.image,
-        }))
-      );
+    if (!data) {
+      setDbEvents([]);
+      return;
     }
+
+    const events: DbEvent[] = data.map((event) => ({
+      id: event.id,
+      title: event.title,
+      date: event.date,
+      location: event.location,
+      description: event.description || '',
+      type: event.type || 'celebration',
+      image: event.image || null,
+    }));
+
+    setDbEvents(events);
   };
 
+
+  // ==========================================================
+  // FETCH ANNOUNCEMENTS
+  // ==========================================================
+
   const fetchAnnouncements = async () => {
+
     const { data, error } = await supabase
       .from('announcements')
       .select('*')
       .order('created_at', { ascending: false });
 
     if (error) {
-      console.error('Error loading announcements:', error);
+      console.error(
+        'Error loading announcements:',
+        error
+      );
       return;
     }
 
-    if (data) {
-      setDbAnnouncements(
-        data.map((a: any) => ({
-          id: a.id,
-          title: a.title,
-          author: a.author_name,
-          date: a.created_at,
-          priority: a.priority,
-        }))
-      );
+    if (!data) {
+      setDbAnnouncements([]);
+      return;
     }
+
+    const announcements: DbAnnouncement[] =
+      data.map((announcement) => ({
+        id: announcement.id,
+        title: announcement.title,
+        author:
+          announcement.author_name || 'Family Admin',
+        date: announcement.created_at,
+        priority:
+          announcement.priority || 'medium',
+      }));
+
+    setDbAnnouncements(announcements);
   };
 
+
+  // ==========================================================
+  // FETCH MEMBERS
+  // ==========================================================
+
   const fetchMembers = async () => {
+
     const { data, error } = await supabase
       .from('members')
       .select('*')
-      .order('generation', { ascending: true });
+      .order('generation', {
+        ascending: true,
+      });
 
     if (error) {
       console.error('Error loading members:', error);
       return;
     }
 
-    if (data) {
-      setDbMembers(
-        data.map((m: any) => ({
-          id: m.id,
-          name: m.name,
-          role: m.role,
-          age: m.age,
-          bio: m.bio,
-          image: m.image,
-          generation: m.generation,
-          location: m.location,
-          occupation: m.occupation,
-          tags: Array.isArray(m.tags) ? m.tags : [],
-        }))
-      );
+    if (!data) {
+      setDbMembers([]);
+      return;
     }
+
+    const members: DbMember[] = data.map((member) => ({
+      id: member.id,
+      name: member.name,
+      role: member.role || '',
+      age: member.age,
+      bio: member.bio || '',
+      image:
+        member.image ||
+        '/images/placeholder.jpg',
+      generation:
+        Number(member.generation) || 1,
+      location:
+        member.location || '',
+      occupation:
+        member.occupation || '',
+      tags:
+        Array.isArray(member.tags)
+          ? member.tags
+          : [],
+    }));
+
+    setDbMembers(members);
   };
 
+
+  // ==========================================================
+  // FETCH ALL PORTAL DATA
+  // ==========================================================
+
   useEffect(() => {
-    if (isAuthenticated) {
-      fetchEvents();
-      fetchAnnouncements();
-      fetchMembers();
+
+    if (!isAuthenticated) {
+      return;
     }
+
+    fetchEvents();
+    fetchAnnouncements();
+    fetchMembers();
+
   }, [isAuthenticated]);
 
 
   // ==========================================================
-  // EVENT IMAGE HANDLER
+  // EVENT IMAGE CHANGE
   // ==========================================================
 
-  const handleEventImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
-    if (!selected) return;
-    setEventImageFile(selected);
-    setEventImagePreview(URL.createObjectURL(selected));
+  const handleEventImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+
+    const selectedFile = e.target.files?.[0];
+
+    if (!selectedFile) {
+      return;
+    }
+
+    setEventImageFile(selectedFile);
+
+    const preview =
+      URL.createObjectURL(selectedFile);
+
+    setEventImagePreview(preview);
   };
 
 
   // ==========================================================
-  // MEMBER IMAGE HANDLER
+  // MEMBER IMAGE CHANGE
   // ==========================================================
 
-  const handleMemberImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selected = e.target.files?.[0];
-    if (!selected) return;
-    setMemberImageFile(selected);
-    setMemberImagePreview(URL.createObjectURL(selected));
+  const handleMemberImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+
+    const selectedFile = e.target.files?.[0];
+
+    if (!selectedFile) {
+      return;
+    }
+
+    setMemberImageFile(selectedFile);
+
+    const preview =
+      URL.createObjectURL(selectedFile);
+
+    setMemberImagePreview(preview);
+  };
+
+
+  // ==========================================================
+  // RESET EVENT FORM
+  // ==========================================================
+
+  const resetEventForm = () => {
+
+    setEventTitle('');
+    setEventDate('');
+    setEventLocation('');
+    setEventDescription('');
+    setEventType('celebration');
+
+    setEventImageFile(null);
+
+    if (eventImagePreview) {
+      URL.revokeObjectURL(eventImagePreview);
+    }
+
+    setEventImagePreview(null);
+
+    setEventFormError('');
+  };
+
+
+  // ==========================================================
+  // RESET ANNOUNCEMENT FORM
+  // ==========================================================
+
+  const resetAnnouncementForm = () => {
+
+    setAnnTitle('');
+    setAnnPriority('medium');
+    setAnnFormError('');
+  };
+
+
+  // ==========================================================
+  // RESET MEMBER FORM
+  // ==========================================================
+
+  const resetMemberForm = () => {
+
+    setMemberName('');
+    setMemberRole('');
+    setMemberBio('');
+    setMemberGeneration('1');
+    setMemberLocation('');
+    setMemberOccupation('');
+    setMemberTags('');
+
+    setMemberImageFile(null);
+
+    if (memberImagePreview) {
+      URL.revokeObjectURL(memberImagePreview);
+    }
+
+    setMemberImagePreview(null);
+
+    setMemberFormError('');
   };
 
 
@@ -345,64 +523,160 @@ export default function PortalPage() {
   // ==========================================================
 
   const submitEvent = async () => {
+
     setEventFormError('');
 
-    if (!eventTitle.trim() || !eventDate || !eventLocation.trim()) {
-      setEventFormError('Please fill in title, date, and location.');
+    if (
+      !eventTitle.trim() ||
+      !eventDate ||
+      !eventLocation.trim()
+    ) {
+      setEventFormError(
+        'Please fill in the title, date, and location.'
+      );
       return;
     }
 
-    if (!currentUser) return;
+    if (!currentUser) {
+      setEventFormError(
+        'You must be signed in to create an event.'
+      );
+      return;
+    }
 
-    setPostingEvent(true);
+    if (!isAdmin) {
+      setEventFormError(
+        'Only family administrators can create events.'
+      );
+      return;
+    }
 
-    let imageUrl: string | null = null;
+    try {
 
-    // Upload image first, if one was selected
-    if (eventImageFile) {
-      const fileExt = eventImageFile.name.split('.').pop();
-      const fileName = `event-${currentUser.id}-${Date.now()}.${fileExt}`;
+      setPostingEvent(true);
 
-      const { error: uploadError } = await supabase.storage
-        .from('gallery-photos')
-        .upload(fileName, eventImageFile);
+      let imageUrl: string | null = null;
 
-      if (uploadError) {
-        console.error('Error uploading event image:', uploadError);
-        setEventFormError('Image upload failed. Try again.');
-        setPostingEvent(false);
+
+      // ------------------------------------------------------
+      // UPLOAD EVENT IMAGE
+      // ------------------------------------------------------
+
+      if (eventImageFile) {
+
+        const fileExtension =
+          eventImageFile.name
+            .split('.')
+            .pop()
+            ?.toLowerCase() || 'jpg';
+
+        const fileName =
+          `events/${currentUser.id}-${Date.now()}.${fileExtension}`;
+
+
+        const {
+          error: uploadError,
+        } = await supabase.storage
+          .from('gallery-photos')
+          .upload(
+            fileName,
+            eventImageFile,
+            {
+              cacheControl: '3600',
+              upsert: false,
+            }
+          );
+
+
+        if (uploadError) {
+
+          console.error(
+            'Event image upload error:',
+            uploadError
+          );
+
+          setEventFormError(
+            'Image upload failed. Please try again.'
+          );
+
+          return;
+        }
+
+
+        const {
+          data: publicUrlData,
+        } = supabase.storage
+          .from('gallery-photos')
+          .getPublicUrl(fileName);
+
+
+        imageUrl =
+          publicUrlData.publicUrl;
+      }
+
+
+      // ------------------------------------------------------
+      // INSERT EVENT
+      // ------------------------------------------------------
+
+      const {
+        error: insertError,
+      } = await supabase
+        .from('events')
+        .insert({
+          title: eventTitle.trim(),
+          date: eventDate,
+          location: eventLocation.trim(),
+          description:
+            eventDescription.trim(),
+          type: eventType,
+          image: imageUrl,
+          created_by: currentUser.id,
+        });
+
+
+      if (insertError) {
+
+        console.error(
+          'Error posting event:',
+          insertError
+        );
+
+        setEventFormError(
+          insertError.message ||
+          'Something went wrong while creating the event.'
+        );
+
         return;
       }
 
-      imageUrl = supabase.storage.from('gallery-photos').getPublicUrl(fileName).data.publicUrl;
-    }
 
-    const { error } = await supabase.from('events').insert({
-      title: eventTitle.trim(),
-      date: eventDate,
-      location: eventLocation.trim(),
-      description: eventDescription.trim(),
-      type: eventType,
-      image: imageUrl,
-      created_by: currentUser.id,
-    });
+      // ------------------------------------------------------
+      // SUCCESS
+      // ------------------------------------------------------
 
-    if (error) {
-      console.error('Error posting event:', error);
-      setEventFormError('Something went wrong. Please try again.');
-    } else {
-      setEventTitle('');
-      setEventDate('');
-      setEventLocation('');
-      setEventDescription('');
-      setEventType('celebration');
-      setEventImageFile(null);
-      setEventImagePreview(null);
+      resetEventForm();
+
       setShowEventForm(false);
-      fetchEvents();
-    }
 
-    setPostingEvent(false);
+      await fetchEvents();
+
+    } catch (error) {
+
+      console.error(
+        'Unexpected event error:',
+        error
+      );
+
+      setEventFormError(
+        'Something went wrong. Please try again.'
+      );
+
+    } finally {
+
+      setPostingEvent(false);
+
+    }
   };
 
 
@@ -411,35 +685,91 @@ export default function PortalPage() {
   // ==========================================================
 
   const submitAnnouncement = async () => {
+
     setAnnFormError('');
 
     if (!annTitle.trim()) {
-      setAnnFormError('Please enter a title.');
+
+      setAnnFormError(
+        'Please enter an announcement title.'
+      );
+
       return;
     }
 
-    if (!currentUser) return;
+    if (!currentUser) {
 
-    setPostingAnn(true);
+      setAnnFormError(
+        'You must be signed in.'
+      );
 
-    const { error } = await supabase.from('announcements').insert({
-      title: annTitle.trim(),
-      author_name: currentUser.name,
-      priority: annPriority,
-      created_by: currentUser.id,
-    });
-
-    if (error) {
-      console.error('Error posting announcement:', error);
-      setAnnFormError('Something went wrong. Please try again.');
-    } else {
-      setAnnTitle('');
-      setAnnPriority('medium');
-      setShowAnnouncementForm(false);
-      fetchAnnouncements();
+      return;
     }
 
-    setPostingAnn(false);
+    if (!isAdmin) {
+
+      setAnnFormError(
+        'Only family administrators can post announcements.'
+      );
+
+      return;
+    }
+
+    try {
+
+      setPostingAnn(true);
+
+
+      const {
+        error,
+      } = await supabase
+        .from('announcements')
+        .insert({
+          title: annTitle.trim(),
+          author_name: currentUser.name,
+          priority: annPriority,
+          created_by: currentUser.id,
+        });
+
+
+      if (error) {
+
+        console.error(
+          'Error posting announcement:',
+          error
+        );
+
+        setAnnFormError(
+          error.message ||
+          'Something went wrong. Please try again.'
+        );
+
+        return;
+      }
+
+
+      resetAnnouncementForm();
+
+      setShowAnnouncementForm(false);
+
+      await fetchAnnouncements();
+
+    } catch (error) {
+
+      console.error(
+        'Unexpected announcement error:',
+        error
+      );
+
+      setAnnFormError(
+        'Something went wrong. Please try again.'
+      );
+
+    } finally {
+
+      setPostingAnn(false);
+
+    }
   };
 
 
@@ -448,125 +778,267 @@ export default function PortalPage() {
   // ==========================================================
 
   const submitMember = async () => {
+
     setMemberFormError('');
 
-    if (!memberName.trim() || !memberRole.trim() || !memberBio.trim()) {
-      setMemberFormError('Please fill in name, role, and bio.');
+    if (
+      !memberName.trim() ||
+      !memberRole.trim() ||
+      !memberBio.trim()
+    ) {
+
+      setMemberFormError(
+        'Please fill in the name, role, and bio.'
+      );
+
       return;
     }
 
-    if (!currentUser) return;
+    if (!currentUser) {
 
-    setPostingMember(true);
+      setMemberFormError(
+        'You must be signed in.'
+      );
 
-    let imageUrl = '/images/placeholder.jpg';
+      return;
+    }
 
-    if (memberImageFile) {
-      const fileExt = memberImageFile.name.split('.').pop();
-      const fileName = `member-${currentUser.id}-${Date.now()}.${fileExt}`;
+    if (!isAdmin) {
 
-      const { error: uploadError } = await supabase.storage
-        .from('gallery-photos')
-        .upload(fileName, memberImageFile);
+      setMemberFormError(
+        'Only family administrators can add members.'
+      );
 
-      if (uploadError) {
-        console.error('Error uploading member image:', uploadError);
-        setMemberFormError('Image upload failed. Try again.');
-        setPostingMember(false);
-        return;
+      return;
+    }
+
+    try {
+
+      setPostingMember(true);
+
+      let imageUrl =
+        '/images/placeholder.jpg';
+
+
+      // ------------------------------------------------------
+      // UPLOAD MEMBER IMAGE
+      // ------------------------------------------------------
+
+      if (memberImageFile) {
+
+        const fileExtension =
+          memberImageFile.name
+            .split('.')
+            .pop()
+            ?.toLowerCase() || 'jpg';
+
+        const fileName =
+          `members/${currentUser.id}-${Date.now()}.${fileExtension}`;
+
+
+        const {
+          error: uploadError,
+        } = await supabase.storage
+          .from('gallery-photos')
+          .upload(
+            fileName,
+            memberImageFile,
+            {
+              cacheControl: '3600',
+              upsert: false,
+            }
+          );
+
+
+        if (uploadError) {
+
+          console.error(
+            'Member image upload error:',
+            uploadError
+          );
+
+          setMemberFormError(
+            'Image upload failed. Please try again.'
+          );
+
+          return;
+        }
+
+
+        const {
+          data: publicUrlData,
+        } = supabase.storage
+          .from('gallery-photos')
+          .getPublicUrl(fileName);
+
+
+        imageUrl =
+          publicUrlData.publicUrl;
       }
 
-      imageUrl = supabase.storage.from('gallery-photos').getPublicUrl(fileName).data.publicUrl;
-    }
 
-    const tagsArray = memberTags.split(',').map(t => t.trim()).filter(Boolean);
+      // ------------------------------------------------------
+      // TAGS
+      // ------------------------------------------------------
 
-    const { error } = await supabase.from('members').insert({
-      name: memberName.trim(),
-      role: memberRole.trim(),
-      bio: memberBio.trim(),
-      image: imageUrl,
-      generation: parseInt(memberGeneration),
-      location: memberLocation.trim() || null,
-      occupation: memberOccupation.trim() || null,
-      tags: tagsArray,
-      created_by: currentUser.id,
-    });
-
-    if (error) {
-      console.error('Error adding member:', error);
-      setMemberFormError('Something went wrong. Please try again.');
-    } else {
-      setMemberName('');
-      setMemberRole('');
-      setMemberBio('');
-      setMemberGeneration('1');
-      setMemberLocation('');
-      setMemberOccupation('');
-      setMemberTags('');
-      setMemberImageFile(null);
-      setMemberImagePreview(null);
-      setShowMemberForm(false);
-      fetchMembers();
-    }
-
-    setPostingMember(false);
-  };
+      const tagsArray =
+        memberTags
+          .split(',')
+          .map((tag) => tag.trim())
+          .filter(Boolean);
 
 
-  // ==========================================================
-  // MERGED LISTS (real data first, hardcoded as fallback/demo)
-  // ==========================================================
-
-  const allEvents = [...dbEvents, ...familyEvents];
-  const allAnnouncements = [...dbAnnouncements, ...announcements];
-  const allMembers = [...dbMembers, ...familyMembers];
-
-
-  // ==========================================================
-  // LOAD MESSAGES + REALTIME SUBSCRIPTION
-  // ==========================================================
-
-  useEffect(() => {
-
-    // Don't connect to the messages channel if
-    // the user isn't authenticated.
-    if (!isAuthenticated) {
-      setMessages([]);
-      return;
-    }
-
-
-    // --------------------------------------------------------
-    // Load existing messages
-    // --------------------------------------------------------
-
-    const fetchMessages = async () => {
+      // ------------------------------------------------------
+      // INSERT MEMBER
+      // ------------------------------------------------------
 
       const {
-        data,
-        error
+        error,
       } = await supabase
-        .from('messages')
-        .select('*')
-        .order('created_at', {
-          ascending: false
+        .from('members')
+        .insert({
+          name: memberName.trim(),
+          role: memberRole.trim(),
+          bio: memberBio.trim(),
+          image: imageUrl,
+          generation:
+            Number(memberGeneration) || 1,
+          location:
+            memberLocation.trim() || null,
+          occupation:
+            memberOccupation.trim() || null,
+          tags: tagsArray,
+          created_by: currentUser.id,
         });
 
 
       if (error) {
+
         console.error(
-          'Error loading messages:',
+          'Error adding member:',
           error
+        );
+
+        setMemberFormError(
+          error.message ||
+          'Something went wrong. Please try again.'
         );
 
         return;
       }
 
 
-      if (data) {
-        setMessages(data as Message[]);
+      // ------------------------------------------------------
+      // SUCCESS
+      // ------------------------------------------------------
+
+      resetMemberForm();
+
+      setShowMemberForm(false);
+
+      await fetchMembers();
+
+    } catch (error) {
+
+      console.error(
+        'Unexpected member error:',
+        error
+      );
+
+      setMemberFormError(
+        'Something went wrong. Please try again.'
+      );
+
+    } finally {
+
+      setPostingMember(false);
+
+    }
+  };
+
+
+  // ==========================================================
+  // MERGED DATA
+  // ==========================================================
+
+  const allEvents = [
+    ...dbEvents,
+    ...familyEvents,
+  ];
+
+  const allAnnouncements = [
+    ...dbAnnouncements,
+    ...fallbackAnnouncements,
+  ];
+
+  const allMembers = [
+    ...dbMembers,
+    ...familyMembers,
+  ];
+
+
+  // ==========================================================
+  // LOAD MESSAGES + REALTIME
+  // ==========================================================
+
+  useEffect(() => {
+
+    if (!isAuthenticated) {
+
+      setMessages([]);
+
+      return;
+    }
+
+
+    let cancelled = false;
+
+
+    // --------------------------------------------------------
+    // FETCH EXISTING MESSAGES
+    // --------------------------------------------------------
+
+    const fetchMessages = async () => {
+
+      const {
+        data,
+        error,
+      } = await supabase
+        .from('messages')
+        .select(
+          'id, created_at, user_id, author_name, text'
+        )
+        .order(
+          'created_at',
+          {
+            ascending: false,
+          }
+        );
+
+
+      if (cancelled) {
+        return;
       }
+
+
+      if (error) {
+
+        console.error(
+          'Error loading messages:',
+          error
+        );
+
+        setMessageError(
+          'Unable to load family messages.'
+        );
+
+        return;
+      }
+
+
+      setMessages(
+        (data || []) as Message[]
+      );
     };
 
 
@@ -574,68 +1046,74 @@ export default function PortalPage() {
 
 
     // --------------------------------------------------------
-    // Realtime subscription
+    // REALTIME CHANNEL
     // --------------------------------------------------------
 
-    const channel = supabase
-      .channel('messages-channel')
+    const channel =
+      supabase
+        .channel(
+          `family-messages-${Date.now()}`
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: 'INSERT',
+            schema: 'public',
+            table: 'messages',
+          },
+          (payload) => {
 
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'messages',
-        },
-
-        (payload) => {
-
-          const newMessage =
-            payload.new as Message;
-
-
-          setMessages((previousMessages) => {
-
-            // Prevent duplicate messages
-            // in case the same realtime event
-            // is received more than once.
-            const alreadyExists =
-              previousMessages.some(
-                (msg) =>
-                  msg.id === newMessage.id
-              );
+            const newMessage =
+              payload.new as Message;
 
 
-            if (alreadyExists) {
-              return previousMessages;
-            }
+            setMessages(
+              (previousMessages) => {
+
+                const alreadyExists =
+                  previousMessages.some(
+                    (existingMessage) =>
+                      existingMessage.id ===
+                      newMessage.id
+                  );
 
 
-            return [
-              newMessage,
-              ...previousMessages
-            ];
-          });
-        }
-      )
+                if (alreadyExists) {
+                  return previousMessages;
+                }
 
-      .subscribe((status) => {
 
-        console.log(
-          'Messages realtime status:',
-          status
+                return [
+                  newMessage,
+                  ...previousMessages,
+                ];
+              }
+            );
+          }
+        )
+        .subscribe(
+          (status) => {
+
+            console.log(
+              'Messages realtime status:',
+              status
+            );
+
+          }
         );
 
-      });
-
 
     // --------------------------------------------------------
-    // Cleanup
+    // CLEANUP
     // --------------------------------------------------------
 
     return () => {
 
-      supabase.removeChannel(channel);
+      cancelled = true;
+
+      supabase.removeChannel(
+        channel
+      );
 
     };
 
@@ -652,13 +1130,17 @@ export default function PortalPage() {
       message.trim();
 
 
-    // Don't send empty messages.
     if (!trimmedMessage) {
       return;
     }
 
 
     if (!currentUser) {
+
+      setMessageError(
+        'You must be signed in to send a message.'
+      );
+
       return;
     }
 
@@ -667,17 +1149,18 @@ export default function PortalPage() {
 
       setSendingMessage(true);
 
+      setMessageError('');
+
 
       // ------------------------------------------------------
-      // Get the actual authenticated Supabase user.
-      // This guarantees that user_id is the Auth UUID.
+      // VERIFY SUPABASE AUTH SESSION
       // ------------------------------------------------------
 
       const {
         data: {
-          user
+          user,
         },
-        error: authError
+        error: authError,
       } = await supabase.auth.getUser();
 
 
@@ -688,14 +1171,18 @@ export default function PortalPage() {
           authError
         );
 
+        setMessageError(
+          'Your session has expired. Please sign in again.'
+        );
+
         return;
       }
 
 
       if (!user) {
 
-        console.error(
-          'No authenticated Supabase user found.'
+        setMessageError(
+          'No authenticated user found. Please sign in again.'
         );
 
         return;
@@ -703,11 +1190,11 @@ export default function PortalPage() {
 
 
       // ------------------------------------------------------
-      // Insert into Supabase
+      // INSERT MESSAGE
       // ------------------------------------------------------
 
       const {
-        error
+        error,
       } = await supabase
         .from('messages')
         .insert({
@@ -724,20 +1211,31 @@ export default function PortalPage() {
           error
         );
 
+        setMessageError(
+          error.message ||
+          'Unable to send message.'
+        );
+
         return;
       }
 
 
-      // The realtime subscription will automatically
-      // add the message to the messages state.
+      // ------------------------------------------------------
+      // SUCCESS
+      // ------------------------------------------------------
+
       setMessage('');
 
 
     } catch (error) {
 
       console.error(
-        'Unexpected error sending message:',
+        'Unexpected message error:',
         error
+      );
+
+      setMessageError(
+        'Something went wrong while sending your message.'
       );
 
     } finally {
@@ -745,12 +1243,11 @@ export default function PortalPage() {
       setSendingMessage(false);
 
     }
-
   };
 
 
   // ==========================================================
-  // IF NOT AUTHENTICATED
+  // NOT AUTHENTICATED
   // ==========================================================
 
   if (!isAuthenticated) {
@@ -776,11 +1273,9 @@ export default function PortalPage() {
 
 
           <p className="text-gray-300 text-lg mb-8 leading-relaxed">
-
             The Kornu Family Portal is exclusive
             to family members. Please sign in with
             your family credentials to continue.
-
           </p>
 
 
@@ -790,28 +1285,28 @@ export default function PortalPage() {
               {
                 icon: MessageCircle,
                 title: 'Family Chat',
-                desc: 'Private family board'
+                desc: 'Private family board',
               },
               {
                 icon: TreePine,
                 title: 'Family Tree',
-                desc: 'Explore your heritage'
+                desc: 'Explore your heritage',
               },
               {
                 icon: FileText,
                 title: 'Documents',
-                desc: 'Shared family files'
+                desc: 'Shared family files',
               },
               {
                 icon: Image,
                 title: 'Private Gallery',
-                desc: 'Exclusive photos'
+                desc: 'Exclusive photos',
               },
             ].map(
               ({
                 icon: Icon,
                 title,
-                desc
+                desc,
               }) => (
 
                 <div
@@ -842,10 +1337,13 @@ export default function PortalPage() {
 
           <button
             onClick={() => {
+
               setCurrentPage('signin');
+
               window.scrollTo({
-                top: 0
+                top: 0,
               });
+
             }}
             className="btn-primary text-base px-8 py-4"
           >
@@ -887,7 +1385,8 @@ export default function PortalPage() {
             style={{
               backgroundImage:
                 'radial-gradient(circle at 25px 25px, white 2px, transparent 0)',
-              backgroundSize: '50px 50px'
+              backgroundSize:
+                '50px 50px',
             }}
           />
 
@@ -897,9 +1396,6 @@ export default function PortalPage() {
         <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
 
           <div className="flex items-center justify-between">
-
-
-            {/* USER INFORMATION */}
 
             <div className="flex items-center gap-4">
 
@@ -921,7 +1417,7 @@ export default function PortalPage() {
                   </span>
 
 
-                  {currentUser?.role === 'admin' && (
+                  {isAdmin && (
 
                     <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
                       Admin
@@ -953,8 +1449,6 @@ export default function PortalPage() {
             </div>
 
 
-            {/* SIGN OUT */}
-
             <button
               onClick={logout}
               className="hidden md:flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium transition-all"
@@ -979,33 +1473,33 @@ export default function PortalPage() {
               {
                 id: 'dashboard',
                 label: 'Dashboard',
-                icon: Star
+                icon: Star,
               },
               {
                 id: 'messages',
                 label: 'Family Chat',
-                icon: MessageCircle
+                icon: MessageCircle,
               },
               {
                 id: 'members',
                 label: 'Members',
-                icon: Users
+                icon: Users,
               },
               {
                 id: 'events',
                 label: 'Events',
-                icon: Calendar
+                icon: Calendar,
               },
               {
                 id: 'announcements',
                 label: 'Announcements',
-                icon: Bell
+                icon: Bell,
               },
             ].map(
               ({
                 id,
                 label,
-                icon: Icon
+                icon: Icon,
               }) => (
 
                 <button
@@ -1062,28 +1556,28 @@ export default function PortalPage() {
                   label: 'Family Members',
                   value: allMembers.length,
                   color: 'text-orange-500',
-                  bg: 'bg-orange-50'
+                  bg: 'bg-orange-50',
                 },
                 {
                   icon: Calendar,
                   label: 'Upcoming Events',
                   value: allEvents.length,
                   color: 'text-blue-500',
-                  bg: 'bg-blue-50'
+                  bg: 'bg-blue-50',
                 },
                 {
                   icon: MessageCircle,
                   label: 'Family Stories',
                   value: familyStories.length,
                   color: 'text-purple-500',
-                  bg: 'bg-purple-50'
+                  bg: 'bg-purple-50',
                 },
                 {
                   icon: Heart,
                   label: 'Countries',
                   value: 8,
                   color: 'text-pink-500',
-                  bg: 'bg-pink-50'
+                  bg: 'bg-pink-50',
                 },
               ].map(
                 ({
@@ -1091,7 +1585,7 @@ export default function PortalPage() {
                   label,
                   value,
                   color,
-                  bg
+                  bg,
                 }) => (
 
                   <div
@@ -1140,15 +1634,30 @@ export default function PortalPage() {
                     title,
                     desc,
                     color,
-                    count
+                    count,
                   }) => (
 
                     <button
                       key={id}
-                      onClick={() =>
-                        id === 'messages' &&
-                        setActiveTab('messages')
-                      }
+                      onClick={() => {
+
+                        if (id === 'messages') {
+                          setActiveTab('messages');
+                        }
+
+                        if (id === 'members') {
+                          setActiveTab('members');
+                        }
+
+                        if (id === 'events') {
+                          setActiveTab('events');
+                        }
+
+                        if (id === 'settings') {
+                          setActiveTab('settings');
+                        }
+
+                      }}
                       className="portal-card p-6 text-left group"
                     >
 
@@ -1210,67 +1719,75 @@ export default function PortalPage() {
 
               <div className="space-y-3">
 
-                {allAnnouncements.map((ann) => (
-
-                  <div
-                    key={ann.id}
-                    className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100"
-                  >
+                {allAnnouncements.map(
+                  (announcement) => (
 
                     <div
-                      className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${
-                        ann.priority === 'high'
-                          ? 'bg-orange-500'
-                          : 'bg-blue-400'
-                      }`}
-                    />
+                      key={announcement.id}
+                      className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100"
+                    >
+
+                      <div
+                        className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${
+                          announcement.priority ===
+                          'high'
+                            ? 'bg-orange-500'
+                            : 'bg-blue-400'
+                        }`}
+                      />
 
 
-                    <div className="flex-1">
+                      <div className="flex-1">
 
-                      <p className="font-semibold text-gray-900 text-sm">
-                        {ann.title}
-                      </p>
+                        <p className="font-semibold text-gray-900 text-sm">
+                          {announcement.title}
+                        </p>
 
 
-                      <p className="text-gray-400 text-xs mt-0.5">
+                        <p className="text-gray-400 text-xs mt-0.5">
 
-                        By {ann.author} ·{' '}
+                          By{' '}
 
-                        {new Date(
-                          ann.date
-                        ).toLocaleDateString(
-                          'en-GB',
-                          {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric'
-                          }
-                        )}
+                          {announcement.author}
 
-                      </p>
+                          {' · '}
+
+                          {new Date(
+                            announcement.date
+                          ).toLocaleDateString(
+                            'en-GB',
+                            {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            }
+                          )}
+
+                        </p>
+
+                      </div>
+
+
+                      {announcement.priority ===
+                        'high' && (
+
+                        <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-semibold">
+                          Important
+                        </span>
+
+                      )}
 
                     </div>
 
-
-                    {ann.priority === 'high' && (
-
-                      <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-semibold">
-                        Important
-                      </span>
-
-                    )}
-
-                  </div>
-
-                ))}
+                  )
+                )}
 
               </div>
 
             </div>
 
 
-            {/* ACTIVITY GRAPH */}
+            {/* ACTIVITY */}
 
             <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-2xl p-8 text-white">
 
@@ -1287,19 +1804,33 @@ export default function PortalPage() {
 
               <div className="grid grid-cols-12 gap-1 items-end h-20">
 
-                {[40, 60, 45, 80, 55, 90, 70, 85, 60, 95, 75, 100]
-                  .map((h, i) => (
+                {[
+                  40,
+                  60,
+                  45,
+                  80,
+                  55,
+                  90,
+                  70,
+                  85,
+                  60,
+                  95,
+                  75,
+                  100,
+                ].map(
+                  (height, index) => (
 
                     <div
-                      key={i}
+                      key={index}
                       className="bg-white/30 hover:bg-white/50 rounded-sm transition-all cursor-pointer"
                       style={{
-                        height: `${h}%`
+                        height: `${height}%`,
                       }}
-                      title={`Month ${i + 1}`}
+                      title={`Month ${index + 1}`}
                     />
 
-                  ))}
+                  )
+                )}
 
               </div>
 
@@ -1317,7 +1848,7 @@ export default function PortalPage() {
 
 
               <p className="text-white/70 text-sm mt-4">
-                Family engagement across all portal features in 2024
+                Family engagement across all portal features
               </p>
 
             </div>
@@ -1328,15 +1859,12 @@ export default function PortalPage() {
 
 
         {/* ====================================================
-            MESSAGES TAB
+            MESSAGES
         ==================================================== */}
 
         {activeTab === 'messages' && (
 
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-
-
-            {/* MESSAGE HEADER */}
 
             <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-pink-50">
 
@@ -1359,12 +1887,7 @@ export default function PortalPage() {
             </div>
 
 
-            {/* ==================================================
-                MESSAGES LIST
-            ================================================== */}
-
             <div className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
-
 
               {messages.length === 0 ? (
 
@@ -1389,15 +1912,10 @@ export default function PortalPage() {
 
                 messages.map((msg) => {
 
-                  // Determine whether this message
-                  // belongs to the currently logged-in user.
-
                   const isMine =
                     msg.user_id ===
                     currentUser?.id;
 
-
-                  // Create initials from author name.
 
                   const avatar =
                     msg.author_name
@@ -1413,8 +1931,6 @@ export default function PortalPage() {
                       : 'F';
 
 
-                  // Format Supabase timestamp.
-
                   const messageTime =
                     msg.created_at
                       ? new Date(
@@ -1425,7 +1941,7 @@ export default function PortalPage() {
                             day: 'numeric',
                             month: 'short',
                             hour: '2-digit',
-                            minute: '2-digit'
+                            minute: '2-digit',
                           }
                         )
                       : '';
@@ -1442,9 +1958,6 @@ export default function PortalPage() {
                       }`}
                     >
 
-
-                      {/* AVATAR */}
-
                       <div
                         className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold shadow-sm ${
                           isMine
@@ -1458,8 +1971,6 @@ export default function PortalPage() {
                       </div>
 
 
-                      {/* MESSAGE CONTENT */}
-
                       <div
                         className={`max-w-[75%] ${
                           isMine
@@ -1468,13 +1979,11 @@ export default function PortalPage() {
                         } flex flex-col gap-1`}
                       >
 
-
                         <div className="flex items-center gap-2">
 
                           <span className="text-xs font-semibold text-gray-700">
                             {msg.author_name}
                           </span>
-
 
                           <span className="text-xs text-gray-400">
                             {messageTime}
@@ -1482,8 +1991,6 @@ export default function PortalPage() {
 
                         </div>
 
-
-                        {/* CHAT BUBBLE */}
 
                         <div
                           className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
@@ -1510,16 +2017,18 @@ export default function PortalPage() {
             </div>
 
 
-            {/* ==================================================
-                MESSAGE INPUT
-            ================================================== */}
+            {messageError && (
+
+              <div className="mx-4 mb-3 bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
+                {messageError}
+              </div>
+
+            )}
+
 
             <div className="p-4 border-t border-gray-100 bg-gray-50">
 
               <div className="flex gap-3">
-
-
-                {/* CURRENT USER AVATAR */}
 
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
 
@@ -1535,11 +2044,17 @@ export default function PortalPage() {
                   <input
                     type="text"
                     value={message}
-                    onChange={(e) =>
+                    onChange={(e) => {
+
                       setMessage(
                         e.target.value
-                      )
-                    }
+                      );
+
+                      if (messageError) {
+                        setMessageError('');
+                      }
+
+                    }}
                     onKeyDown={(e) => {
 
                       if (
@@ -1556,7 +2071,9 @@ export default function PortalPage() {
                     }}
                     placeholder="Share a message with the family..."
                     className="input-field flex-1"
-                    disabled={sendingMessage}
+                    disabled={
+                      sendingMessage
+                    }
                   />
 
 
@@ -1587,7 +2104,7 @@ export default function PortalPage() {
 
 
         {/* ====================================================
-            MEMBERS TAB
+            MEMBERS
         ==================================================== */}
 
         {activeTab === 'members' && (
@@ -1601,10 +2118,16 @@ export default function PortalPage() {
               </h2>
 
 
-              {currentUser?.role === 'admin' && (
+              {isAdmin && (
 
                 <button
-                  onClick={() => setShowMemberForm(true)}
+                  onClick={() => {
+
+                    resetMemberForm();
+
+                    setShowMemberForm(true);
+
+                  }}
                   className="btn-primary py-2 px-4 text-sm"
                 >
 
@@ -1621,66 +2144,83 @@ export default function PortalPage() {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
-              {allMembers.map((member) => (
+              {allMembers.map(
+                (member) => (
 
-                <div
-                  key={member.id}
-                  className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 card-hover"
-                >
+                  <div
+                    key={member.id}
+                    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 card-hover"
+                  >
 
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className="w-14 h-14 rounded-full object-cover flex-shrink-0 ring-2 ring-orange-100"
-                    onError={(e) => {
+                    <img
+                      src={member.image}
+                      alt={member.name}
+                      className="w-14 h-14 rounded-full object-cover flex-shrink-0 ring-2 ring-orange-100"
+                      onError={(e) => {
 
-                      const target =
-                        e.target as HTMLImageElement;
+                        const target =
+                          e.currentTarget;
 
-                      target.src =
-                        '/images/placeholder.jpg';
+                        if (
+                          target.src.includes(
+                            'placeholder.jpg'
+                          )
+                        ) {
+                          return;
+                        }
 
-                    }}
-                  />
+                        target.src =
+                          '/images/placeholder.jpg';
 
-
-                  <div className="flex-1 min-w-0">
-
-                    <h3 className="font-bold text-gray-900 font-montserrat text-sm">
-                      {member.name}
-                    </h3>
-
-
-                    <p className="text-orange-500 text-xs font-medium">
-                      {member.role}
-                    </p>
+                      }}
+                    />
 
 
-                    <p className="text-gray-400 text-xs mt-0.5 truncate">
-                      {member.location} ·{' '}
-                      {member.occupation}
-                    </p>
+                    <div className="flex-1 min-w-0">
+
+                      <h3 className="font-bold text-gray-900 font-montserrat text-sm">
+                        {member.name}
+                      </h3>
+
+
+                      <p className="text-orange-500 text-xs font-medium">
+                        {member.role}
+                      </p>
+
+
+                      <p className="text-gray-400 text-xs mt-0.5 truncate">
+
+                        {member.location ||
+                          'Location not specified'}
+
+                        {' · '}
+
+                        {member.occupation ||
+                          'Occupation not specified'}
+
+                      </p>
+
+                    </div>
+
+
+                    <span
+                      className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${
+                        member.generation === 1
+                          ? 'bg-orange-100 text-orange-700'
+                          : member.generation === 2
+                          ? 'bg-pink-100 text-pink-700'
+                          : 'bg-purple-100 text-purple-700'
+                      }`}
+                    >
+
+                      Gen {member.generation}
+
+                    </span>
 
                   </div>
 
-
-                  <span
-                    className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${
-                      member.generation === 1
-                        ? 'bg-orange-100 text-orange-700'
-                        : member.generation === 2
-                        ? 'bg-pink-100 text-pink-700'
-                        : 'bg-purple-100 text-purple-700'
-                    }`}
-                  >
-
-                    Gen {member.generation}
-
-                  </span>
-
-                </div>
-
-              ))}
+                )
+              )}
 
             </div>
 
@@ -1690,7 +2230,7 @@ export default function PortalPage() {
 
 
         {/* ====================================================
-            EVENTS TAB
+            EVENTS
         ==================================================== */}
 
         {activeTab === 'events' && (
@@ -1703,14 +2243,26 @@ export default function PortalPage() {
                 My Family Events
               </h2>
 
-              {currentUser?.role === 'admin' && (
+
+              {isAdmin && (
+
                 <button
-                  onClick={() => setShowEventForm(true)}
+                  onClick={() => {
+
+                    resetEventForm();
+
+                    setShowEventForm(true);
+
+                  }}
                   className="btn-primary py-2 px-4 text-sm"
                 >
+
                   <Plus size={14} />
+
                   Add Event
+
                 </button>
+
               )}
 
             </div>
@@ -1718,87 +2270,98 @@ export default function PortalPage() {
 
             <div className="space-y-4">
 
-              {allEvents.map((event) => (
+              {allEvents.map(
+                (event) => (
 
-                <div
-                  key={event.id}
-                  className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex gap-4"
-                >
+                  <div
+                    key={event.id}
+                    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex gap-4"
+                  >
 
-                  {event.image ? (
-                    <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden">
-                      <img
-                        src={event.image}
-                        alt={event.title}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                  ) : (
-                    <div className="w-16 h-16 flex-shrink-0 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex flex-col items-center justify-center text-white">
+                    {event.image ? (
 
-                      <div className="text-xl font-black font-montserrat leading-none">
+                      <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden">
 
-                        {new Date(
-                          event.date
-                        ).getDate()}
+                        <img
+                          src={event.image}
+                          alt={event.title}
+                          className="w-full h-full object-cover"
+                        />
 
                       </div>
 
+                    ) : (
 
-                      <div className="text-xs font-semibold opacity-80">
+                      <div className="w-16 h-16 flex-shrink-0 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex flex-col items-center justify-center text-white">
 
-                        {new Date(
-                          event.date
-                        ).toLocaleDateString(
-                          'en-GB',
-                          {
-                            month: 'short'
-                          }
-                        )}
+                        <div className="text-xl font-black font-montserrat leading-none">
+
+                          {new Date(
+                            event.date
+                          ).getDate()}
+
+                        </div>
+
+
+                        <div className="text-xs font-semibold opacity-80">
+
+                          {new Date(
+                            event.date
+                          ).toLocaleDateString(
+                            'en-GB',
+                            {
+                              month: 'short',
+                            }
+                          )}
+
+                        </div>
 
                       </div>
 
-                    </div>
-                  )}
-
-
-                  <div className="flex-1">
-
-                    <h3 className="font-bold text-gray-900 font-montserrat text-base">
-                      {event.title}
-                    </h3>
-
-
-                    <p className="text-gray-500 text-sm mt-1">
-                      {event.location}
-                    </p>
-
-
-                    <p className="text-gray-400 text-xs mt-2 line-clamp-1">
-                      {event.description}
-                    </p>
-
-                  </div>
-
-
-                  <div className="flex flex-col items-end gap-2">
-
-                    <span className="text-xs bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full font-semibold capitalize">
-                      {event.type}
-                    </span>
-
-
-                    {event.rsvpCount !== undefined && (
-                      <span className="text-xs text-gray-400">
-                        {event.rsvpCount} attending
-                      </span>
                     )}
 
+
+                    <div className="flex-1">
+
+                      <h3 className="font-bold text-gray-900 font-montserrat text-base">
+                        {event.title}
+                      </h3>
+
+
+                      <p className="text-gray-500 text-sm mt-1">
+                        {event.location}
+                      </p>
+
+
+                      <p className="text-gray-400 text-xs mt-2 line-clamp-1">
+                        {event.description}
+                      </p>
+
+                    </div>
+
+
+                    <div className="flex flex-col items-end gap-2">
+
+                      <span className="text-xs bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full font-semibold capitalize">
+                        {event.type}
+                      </span>
+
+
+                      {event.rsvpCount !==
+                        undefined && (
+
+                        <span className="text-xs text-gray-400">
+                          {event.rsvpCount} attending
+                        </span>
+
+                      )}
+
+                    </div>
+
                   </div>
 
-                </div>
-
-              ))}
+                )
+              )}
 
             </div>
 
@@ -1808,7 +2371,7 @@ export default function PortalPage() {
 
 
         {/* ====================================================
-            ANNOUNCEMENTS TAB
+            ANNOUNCEMENTS
         ==================================================== */}
 
         {activeTab === 'announcements' && (
@@ -1822,10 +2385,18 @@ export default function PortalPage() {
               </h2>
 
 
-              {currentUser?.role === 'admin' && (
+              {isAdmin && (
 
                 <button
-                  onClick={() => setShowAnnouncementForm(true)}
+                  onClick={() => {
+
+                    resetAnnouncementForm();
+
+                    setShowAnnouncementForm(
+                      true
+                    );
+
+                  }}
                   className="btn-primary py-2 px-4 text-sm"
                 >
 
@@ -1842,76 +2413,81 @@ export default function PortalPage() {
 
             <div className="space-y-4">
 
-              {allAnnouncements.map((ann) => (
+              {allAnnouncements.map(
+                (announcement) => (
 
-                <div
-                  key={ann.id}
-                  className={`bg-white rounded-2xl p-6 shadow-sm border-l-4 ${
-                    ann.priority === 'high'
-                      ? 'border-orange-500'
-                      : 'border-blue-400'
-                  }`}
-                >
+                  <div
+                    key={announcement.id}
+                    className={`bg-white rounded-2xl p-6 shadow-sm border-l-4 ${
+                      announcement.priority ===
+                      'high'
+                        ? 'border-orange-500'
+                        : 'border-blue-400'
+                    }`}
+                  >
 
-                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-start justify-between gap-4">
 
-                    <div>
+                      <div>
 
-                      <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-2">
 
-                        {ann.priority === 'high' && (
+                          {announcement.priority ===
+                            'high' && (
 
-                          <span className="text-xs bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full font-semibold">
-                            Important
-                          </span>
+                            <span className="text-xs bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full font-semibold">
+                              Important
+                            </span>
 
-                        )}
-
-
-                        <span className="text-xs text-gray-400">
-
-                          {new Date(
-                            ann.date
-                          ).toLocaleDateString(
-                            'en-GB',
-                            {
-                              day: 'numeric',
-                              month: 'long',
-                              year: 'numeric'
-                            }
                           )}
 
-                        </span>
+
+                          <span className="text-xs text-gray-400">
+
+                            {new Date(
+                              announcement.date
+                            ).toLocaleDateString(
+                              'en-GB',
+                              {
+                                day: 'numeric',
+                                month: 'long',
+                                year: 'numeric',
+                              }
+                            )}
+
+                          </span>
+
+                        </div>
+
+
+                        <h3 className="font-bold text-gray-900 font-montserrat text-lg">
+                          {announcement.title}
+                        </h3>
+
+
+                        <p className="text-gray-500 text-sm mt-1">
+                          Posted by {announcement.author}
+                        </p>
 
                       </div>
 
 
-                      <h3 className="font-bold text-gray-900 font-montserrat text-lg">
-                        {ann.title}
-                      </h3>
-
-
-                      <p className="text-gray-500 text-sm mt-1">
-                        Posted by {ann.author}
-                      </p>
+                      <Bell
+                        size={18}
+                        className={
+                          announcement.priority ===
+                          'high'
+                            ? 'text-orange-500'
+                            : 'text-blue-400'
+                        }
+                      />
 
                     </div>
 
-
-                    <Bell
-                      size={18}
-                      className={
-                        ann.priority === 'high'
-                          ? 'text-orange-500'
-                          : 'text-blue-400'
-                      }
-                    />
-
                   </div>
 
-                </div>
-
-              ))}
+                )
+              )}
 
             </div>
 
@@ -1927,176 +2503,330 @@ export default function PortalPage() {
       ====================================================== */}
 
       {showEventForm && (
+
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
 
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900">Add Event</h2>
+
+              <h2 className="font-montserrat text-xl font-bold text-gray-900">
+                Add Event
+              </h2>
+
               <button
-                onClick={() => setShowEventForm(false)}
+                onClick={() => {
+
+                  resetEventForm();
+
+                  setShowEventForm(
+                    false
+                  );
+
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
+
                 <X size={20} />
+
               </button>
+
             </div>
+
 
             <div className="space-y-4">
 
               <input
                 type="text"
                 value={eventTitle}
-                onChange={(e) => setEventTitle(e.target.value)}
+                onChange={(e) =>
+                  setEventTitle(
+                    e.target.value
+                  )
+                }
                 placeholder="Event title"
                 className="input-field"
               />
 
+
               <input
                 type="date"
                 value={eventDate}
-                onChange={(e) => setEventDate(e.target.value)}
+                onChange={(e) =>
+                  setEventDate(
+                    e.target.value
+                  )
+                }
                 className="input-field"
               />
+
 
               <input
                 type="text"
                 value={eventLocation}
-                onChange={(e) => setEventLocation(e.target.value)}
+                onChange={(e) =>
+                  setEventLocation(
+                    e.target.value
+                  )
+                }
                 placeholder="Location"
                 className="input-field"
               />
 
+
               <select
                 value={eventType}
-                onChange={(e) => setEventType(e.target.value)}
+                onChange={(e) =>
+                  setEventType(
+                    e.target.value
+                  )
+                }
                 className="input-field"
               >
-                <option value="reunion">Reunion</option>
-                <option value="birthday">Birthday</option>
-                <option value="wedding">Wedding</option>
-                <option value="memorial">Memorial</option>
-                <option value="celebration">Celebration</option>
+
+                <option value="reunion">
+                  Reunion
+                </option>
+
+                <option value="birthday">
+                  Birthday
+                </option>
+
+                <option value="wedding">
+                  Wedding
+                </option>
+
+                <option value="memorial">
+                  Memorial
+                </option>
+
+                <option value="celebration">
+                  Celebration
+                </option>
+
               </select>
+
 
               <textarea
                 value={eventDescription}
-                onChange={(e) => setEventDescription(e.target.value)}
+                onChange={(e) =>
+                  setEventDescription(
+                    e.target.value
+                  )
+                }
                 placeholder="Description"
                 rows={3}
                 className="input-field resize-none"
               />
 
+
               <label className="block">
+
                 <div className="border-2 border-dashed border-gray-200 rounded-2xl p-4 text-center cursor-pointer hover:border-orange-300 transition-colors">
+
                   {eventImagePreview ? (
+
                     <img
                       src={eventImagePreview}
-                      alt="Preview"
+                      alt="Event preview"
                       className="max-h-32 mx-auto rounded-xl object-cover"
                     />
+
                   ) : (
-                    <p className="text-sm text-gray-400">Click to add a photo (optional)</p>
+
+                    <p className="text-sm text-gray-400">
+                      Click to add a photo (optional)
+                    </p>
+
                   )}
+
                 </div>
+
+
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={handleEventImageChange}
+                  onChange={
+                    handleEventImageChange
+                  }
                   className="hidden"
                 />
+
               </label>
 
+
               {eventFormError && (
+
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
                   {eventFormError}
                 </div>
+
               )}
 
+
               <div className="flex gap-3">
+
                 <button
-                  onClick={() => setShowEventForm(false)}
+                  onClick={() => {
+
+                    resetEventForm();
+
+                    setShowEventForm(
+                      false
+                    );
+
+                  }}
                   className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium"
                 >
                   Cancel
                 </button>
+
+
                 <button
                   onClick={submitEvent}
                   disabled={postingEvent}
                   className="flex-1 btn-primary justify-center disabled:opacity-60"
                 >
-                  {postingEvent ? 'Posting...' : 'Post Event'}
+
+                  {postingEvent
+                    ? 'Posting...'
+                    : 'Post Event'}
+
                 </button>
+
               </div>
 
             </div>
 
           </div>
+
         </div>
+
       )}
 
 
       {/* ======================================================
-          POST ANNOUNCEMENT MODAL
+          ANNOUNCEMENT MODAL
       ====================================================== */}
 
       {showAnnouncementForm && (
+
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl">
 
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900">Post Announcement</h2>
+
+              <h2 className="font-montserrat text-xl font-bold text-gray-900">
+                Post Announcement
+              </h2>
+
+
               <button
-                onClick={() => setShowAnnouncementForm(false)}
+                onClick={() => {
+
+                  resetAnnouncementForm();
+
+                  setShowAnnouncementForm(
+                    false
+                  );
+
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
+
                 <X size={20} />
+
               </button>
+
             </div>
+
 
             <div className="space-y-4">
 
               <input
                 type="text"
                 value={annTitle}
-                onChange={(e) => setAnnTitle(e.target.value)}
+                onChange={(e) =>
+                  setAnnTitle(
+                    e.target.value
+                  )
+                }
                 placeholder="Announcement title"
                 className="input-field"
               />
 
+
               <select
                 value={annPriority}
-                onChange={(e) => setAnnPriority(e.target.value)}
+                onChange={(e) =>
+                  setAnnPriority(
+                    e.target.value
+                  )
+                }
                 className="input-field"
               >
-                <option value="medium">Medium priority</option>
-                <option value="high">High priority</option>
+
+                <option value="medium">
+                  Medium priority
+                </option>
+
+                <option value="high">
+                  High priority
+                </option>
+
               </select>
 
+
               {annFormError && (
+
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
                   {annFormError}
                 </div>
+
               )}
 
+
               <div className="flex gap-3">
+
                 <button
-                  onClick={() => setShowAnnouncementForm(false)}
+                  onClick={() => {
+
+                    resetAnnouncementForm();
+
+                    setShowAnnouncementForm(
+                      false
+                    );
+
+                  }}
                   className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium"
                 >
                   Cancel
                 </button>
+
+
                 <button
-                  onClick={submitAnnouncement}
+                  onClick={
+                    submitAnnouncement
+                  }
                   disabled={postingAnn}
                   className="flex-1 btn-primary justify-center disabled:opacity-60"
                 >
-                  {postingAnn ? 'Posting...' : 'Post'}
+
+                  {postingAnn
+                    ? 'Posting...'
+                    : 'Post'}
+
                 </button>
+
               </div>
 
             </div>
 
           </div>
+
         </div>
+
       )}
 
 
@@ -2105,129 +2835,231 @@ export default function PortalPage() {
       ====================================================== */}
 
       {showMemberForm && (
+
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
 
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900">Add Family Member</h2>
+
+              <h2 className="font-montserrat text-xl font-bold text-gray-900">
+                Add Family Member
+              </h2>
+
+
               <button
-                onClick={() => setShowMemberForm(false)}
+                onClick={() => {
+
+                  resetMemberForm();
+
+                  setShowMemberForm(
+                    false
+                  );
+
+                }}
                 className="text-gray-400 hover:text-gray-600"
               >
+
                 <X size={20} />
+
               </button>
+
             </div>
+
 
             <div className="space-y-4">
 
               <input
                 type="text"
                 value={memberName}
-                onChange={(e) => setMemberName(e.target.value)}
+                onChange={(e) =>
+                  setMemberName(
+                    e.target.value
+                  )
+                }
                 placeholder="Full name"
                 className="input-field"
               />
 
+
               <input
                 type="text"
                 value={memberRole}
-                onChange={(e) => setMemberRole(e.target.value)}
+                onChange={(e) =>
+                  setMemberRole(
+                    e.target.value
+                  )
+                }
                 placeholder="Role (e.g. Son · Doctor)"
                 className="input-field"
               />
 
+
               <select
                 value={memberGeneration}
-                onChange={(e) => setMemberGeneration(e.target.value)}
+                onChange={(e) =>
+                  setMemberGeneration(
+                    e.target.value
+                  )
+                }
                 className="input-field"
               >
-                <option value="1">Generation 1 — Founders</option>
-                <option value="2">Generation 2 — Parents</option>
-                <option value="3">Generation 3 — Grandchildren</option>
-                <option value="4">Generation 4 — Great-Grandchildren</option>
+
+                <option value="1">
+                  Generation 1 — Founders
+                </option>
+
+                <option value="2">
+                  Generation 2 — Parents
+                </option>
+
+                <option value="3">
+                  Generation 3 — Grandchildren
+                </option>
+
+                <option value="4">
+                  Generation 4 — Great-Grandchildren
+                </option>
+
               </select>
+
 
               <input
                 type="text"
                 value={memberLocation}
-                onChange={(e) => setMemberLocation(e.target.value)}
+                onChange={(e) =>
+                  setMemberLocation(
+                    e.target.value
+                  )
+                }
                 placeholder="Location (optional)"
                 className="input-field"
               />
 
+
               <input
                 type="text"
                 value={memberOccupation}
-                onChange={(e) => setMemberOccupation(e.target.value)}
+                onChange={(e) =>
+                  setMemberOccupation(
+                    e.target.value
+                  )
+                }
                 placeholder="Occupation (optional)"
                 className="input-field"
               />
 
+
               <textarea
                 value={memberBio}
-                onChange={(e) => setMemberBio(e.target.value)}
+                onChange={(e) =>
+                  setMemberBio(
+                    e.target.value
+                  )
+                }
                 placeholder="Bio"
                 rows={3}
                 className="input-field resize-none"
               />
 
+
               <input
                 type="text"
                 value={memberTags}
-                onChange={(e) => setMemberTags(e.target.value)}
+                onChange={(e) =>
+                  setMemberTags(
+                    e.target.value
+                  )
+                }
                 placeholder="Tags, comma separated (e.g. Doctor, Healer)"
                 className="input-field"
               />
 
+
               <label className="block">
+
                 <div className="border-2 border-dashed border-gray-200 rounded-2xl p-4 text-center cursor-pointer hover:border-orange-300 transition-colors">
+
                   {memberImagePreview ? (
+
                     <img
                       src={memberImagePreview}
-                      alt="Preview"
+                      alt="Member preview"
                       className="max-h-32 mx-auto rounded-xl object-cover"
                     />
+
                   ) : (
-                    <p className="text-sm text-gray-400">Click to add a photo (optional)</p>
+
+                    <p className="text-sm text-gray-400">
+                      Click to add a photo (optional)
+                    </p>
+
                   )}
+
                 </div>
+
+
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={handleMemberImageChange}
+                  onChange={
+                    handleMemberImageChange
+                  }
                   className="hidden"
                 />
+
               </label>
 
+
               {memberFormError && (
+
                 <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
                   {memberFormError}
                 </div>
+
               )}
 
+
               <div className="flex gap-3">
+
                 <button
-                  onClick={() => setShowMemberForm(false)}
+                  onClick={() => {
+
+                    resetMemberForm();
+
+                    setShowMemberForm(
+                      false
+                    );
+
+                  }}
                   className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium"
                 >
                   Cancel
                 </button>
+
+
                 <button
                   onClick={submitMember}
                   disabled={postingMember}
                   className="flex-1 btn-primary justify-center disabled:opacity-60"
                 >
-                  {postingMember ? 'Adding...' : 'Add Member'}
+
+                  {postingMember
+                    ? 'Adding...'
+                    : 'Add Member'}
+
                 </button>
+
               </div>
 
             </div>
 
           </div>
+
         </div>
+
       )}
 
     </div>
-
   );
 }

@@ -156,16 +156,16 @@ export default function SignInPage() {
                 {loading ? 'Signing In...' : 'Sign In to Portal'}
               </button>
             </form>
-
-           <div className="mt-6 text-center">
+<div className="mt-6 text-center">
   <p className="text-sm text-gray-500">
     Not a member?{' '}
-    <a
-      href="https://www.google.com"
+    <button
+      type="button"
+      onClick={() => setCurrentPage('request-access')}
       className="text-orange-500 font-semibold hover:text-orange-600 transition-colors"
     >
       Request Access
-    </a>
+    </button>
   </p>
 </div>
           </div>
