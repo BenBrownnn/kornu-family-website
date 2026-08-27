@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useStore } from '../store/useStore';
-import { LogIn, Eye, EyeOff, Shield, ArrowLeft, Info } from 'lucide-react';
+import { LogIn, Eye, EyeOff, Shield, ArrowLeft } from 'lucide-react';
 
 export default function SignInPage() {
   const { login, setCurrentPage } = useStore();
@@ -23,17 +23,6 @@ export default function SignInPage() {
     } else {
       setError('Invalid email or password. Please try again.');
     }
-  };
-
-  const demoAccounts = [
-    { email: 'admin@kornu.family', password: 'kornu2024', role: 'Admin' },
-    { email: 'ama@kornu.family', password: 'family123', role: 'Member' },
-  ];
-
-  const fillDemo = (email: string, pass: string) => {
-    setEmail(email);
-    setPassword(pass);
-    setError('');
   };
 
   return (
@@ -111,31 +100,6 @@ export default function SignInPage() {
               <p className="text-gray-500 text-sm">
                 For Kornu family members only. Contact admin if you need access.
               </p>
-            </div>
-
-            {/* Demo credentials */}
-            <div className="bg-blue-50 border border-blue-200 rounded-2xl p-4 mb-6">
-              <div className="flex items-center gap-2 mb-3">
-                <Info size={14} className="text-blue-500" />
-                <span className="text-xs font-semibold text-blue-600 uppercase tracking-wide">Demo Accounts</span>
-              </div>
-              <div className="space-y-2">
-                {demoAccounts.map((acc) => (
-                  <button
-                    key={acc.email}
-                    onClick={() => fillDemo(acc.email, acc.password)}
-                    className="w-full text-left bg-white border border-blue-100 rounded-xl p-3 hover:border-blue-300 transition-colors group"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-xs font-semibold text-gray-700">{acc.email}</p>
-                        <p className="text-xs text-gray-400">Password: {acc.password} · Role: {acc.role}</p>
-                      </div>
-                      <span className="text-xs text-blue-500 group-hover:text-blue-700 font-medium">Use →</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-5">

@@ -74,9 +74,9 @@ export const familyMembers: FamilyMember[] = [
   },
   {
     id: '3',
-    name: 'Kofi Kornu',
+    name: 'Dominic Kofi Kornu',
     role: 'Son · Family Admin',
-    age: 52,
+    age: 45,
     bio: 'Eldest son and family administrator. An accomplished engineer who bridges tradition and modernity. Kofi started this website to keep the family connected.',
     image: '/images/members/kofi.jpg',
     generation: 2,
