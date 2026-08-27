@@ -309,9 +309,15 @@ export default function EventsPage() {
         <div className="mt-16 bg-gray-900 rounded-3xl p-8 text-white text-center">
           <h2 className="font-montserrat text-2xl font-bold mb-3">Have a family event to share?</h2>
           <p className="text-white/80 mb-6">Sign in to the family portal to submit a new event for the family calendar.</p>
-          <button className="bg-white text-orange-600 px-8 py-3 rounded-full font-bold hover:bg-orange-50 transition-colors">
-            Submit an Event
-          </button>
+        <button
+  onClick={() => {
+    setCurrentPage('portal');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }}
+  className="bg-white text-orange-600 px-8 py-3 rounded-full font-bold hover:bg-orange-50 transition-colors"
+>
+  Submit an Event
+  </button>
         </div>
       </div>
       {/* ============ FOOTER ============ */}

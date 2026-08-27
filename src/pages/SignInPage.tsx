@@ -157,14 +157,17 @@ export default function SignInPage() {
               </button>
             </form>
 
-            <div className="mt-6 text-center">
-              <p className="text-sm text-gray-500">
-                Not a member?{' '}
-                <button className="text-orange-500 font-semibold hover:text-orange-600 transition-colors">
-                  Request Access
-                </button>
-              </p>
-            </div>
+           <div className="mt-6 text-center">
+  <p className="text-sm text-gray-500">
+    Not a member?{' '}
+    <a
+      href="https://www.google.com"
+      className="text-orange-500 font-semibold hover:text-orange-600 transition-colors"
+    >
+      Request Access
+    </a>
+  </p>
+</div>
           </div>
         </div>
       </div>
