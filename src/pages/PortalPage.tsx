@@ -2226,19 +2226,35 @@ export default function PortalPage() {
                         {member.role}
                       </p>
 
+<p className="text-gray-400 text-xs mt-0.5 truncate">
+  {member.location || 'Location not specified'}
+  {' · '}
+  {member.occupation || 'Occupation not specified'}
+</p>
 
-                      <p className="text-gray-400 text-xs mt-0.5 truncate">
+<div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs">
+  {member.birthDate && (
+    <span className="text-gray-500">
+      <span className="font-medium text-gray-700">Born:</span>{' '}
+      {new Date(member.birthDate).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })}
+    </span>
+  )}
 
-                        {member.location ||
-                          'Location not specified'}
-
-                        {' · '}
-
-                        {member.occupation ||
-                          'Occupation not specified'}
-
-                      </p>
-
+  {'dateOfPassing' in member && member.dateOfPassing && (
+    <span className="text-gray-500">
+      <span className="font-medium text-gray-700">Passed:</span>{' '}
+      {new Date(member.dateOfPassing).toLocaleDateString('en-GB', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+      })}
+    </span>
+  )}
+</div>
                     </div>
 
 
