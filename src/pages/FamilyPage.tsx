@@ -4,13 +4,15 @@ import { familyMembers } from '../data/familyData';
 import { Search, MapPin, Users, Heart, BookOpen, Sprout } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
-const GENERATIONS = ['All', 'Generation 1', 'Generation 2', 'Generation 3', 'Generation 4'];
+  const GENERATIONS = ['All', 'Generation 1', 'Generation 2', 'Generation 3', 'Generation 4', 'Generation 5', 'Generation 6'];
 
 const GENERATION_META: Record<number, { label: string; badge: string; accent: string }> = {
   1: { label: 'Founders', badge: 'bg-amber-600', accent: 'text-amber-600' },
   2: { label: 'Parents', badge: 'bg-rose-600', accent: 'text-rose-600' },
   3: { label: 'Grandchildren', badge: 'bg-sky-600', accent: 'text-sky-600' },
   4: { label: 'Great-Grandchildren', badge: 'bg-emerald-600', accent: 'text-emerald-600' },
+  5: { label: 'Great-Great-Grandchildren', badge: 'bg-violet-600', accent: 'text-violet-600' },
+  6: { label: 'Great-Great-Great-Grandchildren', badge: 'bg-cyan-600', accent: 'text-cyan-600' },
 };
 
 const FAMILY_VALUES = [
@@ -49,29 +51,31 @@ export default function FamilyPage() {
     setCurrentPage(page);
   };
 useEffect(() => {
-  const fetchMembers = async () => {
-    const { data, error } = await supabase
-      .from('members')
-      .select('*')
-      .order('generation', { ascending: true });
-    if (!error && data) {
-      setDbMembers(
-        data.map((m: any) => ({
-          id: m.id,
-          name: m.name,
-          role: m.role,
-          age: m.age,
-          bio: m.bio,
-          image: m.image,
-          generation: m.generation,
-          birthDate: m.birth_date,
-          location: m.location,
-          occupation: m.occupation,
-          tags: Array.isArray(m.tags) ? m.tags : [],
-        }))
-      );
-    }
-  };
+ const fetchMembers = async () => {
+  const { data, error } = await supabase
+    .from('members')
+    .select('*')
+    .order('generation', { ascending: true });
+
+  if (!error && data) {
+    setDbMembers(
+      data.map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        role: m.role,
+        age: m.age,
+        bio: m.bio,
+        image: m.image,
+        generation: m.generation,
+        birthDate: m.birth_date,
+        dateOfPassing: m.date_of_passing,
+        location: m.location,
+        occupation: m.occupation,
+        tags: Array.isArray(m.tags) ? m.tags : [],
+      }))
+    );
+  }
+};
   fetchMembers();
 }, []);
 
@@ -95,8 +99,8 @@ useEffect(() => {
 
       <div className="max-w-6xl mx-auto px-4 py-12">
         {/* Family Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
-          {([1, 2, 3, 4] as const).map((gen) => {
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
+       {([1, 2, 3, 4, 5, 6] as const).map((gen) => {
             const meta = GENERATION_META[gen];
             const count = allMembers.filter((m) => m.generation === gen).length;
             return (
@@ -142,7 +146,7 @@ useEffect(() => {
         {/* Members Grid */}
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filtered.map((member) => {
-            const meta = GENERATION_META[member.generation as 1 | 2 | 3 | 4];
+            const meta = GENERATION_META[member.generation as 1 | 2 | 3 | 4 | 5 | 6];
             return (
               <div
                 key={member.id}
@@ -151,16 +155,23 @@ useEffect(() => {
               >
                 <div className="relative h-56 overflow-hidden rounded-t-[20px]">
                   <img
-                    src={member.image}
-                    alt={member.name}
-                    className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    onError={handleImageError}
-                  />
-                  <div className="absolute top-3 right-3">
-                    <span className={`text-xs font-semibold px-2 py-1 rounded-full text-white ${meta.badge}`}>
-                      Gen {member.generation}
-                    </span>
-                  </div>
+  src={member.image}
+  alt={member.name}
+  className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
+    member.dateOfPassing ? 'grayscale-[30%]' : ''
+  }`}
+  onError={handleImageError}
+/>
+               <div className="absolute top-3 right-3 flex flex-col items-end gap-1">
+  <span className={`text-xs font-semibold px-2 py-1 rounded-full text-white ${meta.badge}`}>
+    Gen {member.generation}
+  </span>
+  {member.dateOfPassing && (
+    <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-900/80 text-white flex items-center gap-1">
+      🕊️ In Memory
+    </span>
+  )}
+</div>
                   <div className="member-overlay">
                     <div>
                       <div className="flex items-center gap-1 mb-1">
@@ -214,6 +225,20 @@ useEffect(() => {
                     <MapPin size={18} className="text-gray-400" />
                     <span className="text-gray-700">{selectedMember.location}</span>
                   </div>
+
+      {(selectedMember.birthDate || selectedMember.dateOfPassing) && (
+  <div className="flex items-center gap-2">
+    <span className="text-gray-700">
+      {selectedMember.birthDate && new Date(selectedMember.birthDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+      {selectedMember.dateOfPassing && (
+        <>
+          {' '}– {new Date(selectedMember.dateOfPassing).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+          <span className="ml-2 text-sm text-gray-400 italic">In loving memory</span>
+        </>
+      )}
+    </span>
+  </div>
+)}
                   <div>
                     <p className="text-gray-600 mb-2 font-medium">Occupation</p>
                     <p className="text-gray-900">{selectedMember.occupation}</p>

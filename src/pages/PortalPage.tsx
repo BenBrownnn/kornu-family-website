@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import {
@@ -68,6 +69,8 @@ type DbMember = {
   bio: string;
   image: string;
   generation: number;
+  birthDate?: string | null;
+  dateOfPassing?: string | null;
   location?: string;
   occupation?: string;
   tags: string[];
@@ -250,6 +253,10 @@ export default function PortalPage() {
   const [memberRole, setMemberRole] = useState('');
   const [memberBio, setMemberBio] = useState('');
   const [memberGeneration, setMemberGeneration] = useState('1');
+
+  const [memberBirthDate, setMemberBirthDate] = useState('');
+  const [memberDateOfPassing, setMemberDateOfPassing] = useState('');
+
   const [memberLocation, setMemberLocation] = useState('');
   const [memberOccupation, setMemberOccupation] = useState('');
   const [memberTags, setMemberTags] = useState('');
@@ -280,7 +287,9 @@ export default function PortalPage() {
     const { data, error } = await supabase
       .from('events')
       .select('*')
-      .order('date', { ascending: true });
+      .order('date', {
+        ascending: true,
+      });
 
     if (error) {
       console.error('Error loading events:', error);
@@ -315,7 +324,9 @@ export default function PortalPage() {
     const { data, error } = await supabase
       .from('announcements')
       .select('*')
-      .order('created_at', { ascending: false });
+      .order('created_at', {
+        ascending: false,
+      });
 
     if (error) {
       console.error(
@@ -377,12 +388,22 @@ export default function PortalPage() {
       image:
         member.image ||
         '/images/placeholder.jpg',
+
       generation:
         Number(member.generation) || 1,
+
+      birthDate:
+        member.birth_date || null,
+
+      dateOfPassing:
+        member.date_of_passing || null,
+
       location:
         member.location || '',
+
       occupation:
         member.occupation || '',
+
       tags:
         Array.isArray(member.tags)
           ? member.tags
@@ -502,6 +523,10 @@ export default function PortalPage() {
     setMemberRole('');
     setMemberBio('');
     setMemberGeneration('1');
+
+    setMemberBirthDate('');
+    setMemberDateOfPassing('');
+
     setMemberLocation('');
     setMemberOccupation('');
     setMemberTags('');
@@ -573,7 +598,6 @@ export default function PortalPage() {
         const fileName =
           `events/${currentUser.id}-${Date.now()}.${fileExtension}`;
 
-
         const {
           error: uploadError,
         } = await supabase.storage
@@ -586,7 +610,6 @@ export default function PortalPage() {
               upsert: false,
             }
           );
-
 
         if (uploadError) {
 
@@ -602,13 +625,11 @@ export default function PortalPage() {
           return;
         }
 
-
         const {
           data: publicUrlData,
         } = supabase.storage
           .from('gallery-photos')
           .getPublicUrl(fileName);
-
 
         imageUrl =
           publicUrlData.publicUrl;
@@ -718,7 +739,6 @@ export default function PortalPage() {
     try {
 
       setPostingAnn(true);
-
 
       const {
         error,
@@ -897,18 +917,39 @@ export default function PortalPage() {
       } = await supabase
         .from('members')
         .insert({
-          name: memberName.trim(),
-          role: memberRole.trim(),
-          bio: memberBio.trim(),
-          image: imageUrl,
+
+          name:
+            memberName.trim(),
+
+          role:
+            memberRole.trim(),
+
+          bio:
+            memberBio.trim(),
+
+          image:
+            imageUrl,
+
           generation:
             Number(memberGeneration) || 1,
+
+          birth_date:
+            memberBirthDate || null,
+
+          date_of_passing:
+            memberDateOfPassing || null,
+
           location:
             memberLocation.trim() || null,
+
           occupation:
             memberOccupation.trim() || null,
-          tags: tagsArray,
-          created_by: currentUser.id,
+
+          tags:
+            tagsArray,
+
+          created_by:
+            currentUser.id,
         });
 
 
@@ -1371,7 +1412,6 @@ export default function PortalPage() {
 
     <div className="min-h-screen bg-gray-50 pt-[70px]">
 
-
       {/* ======================================================
           PORTAL HEADER
       ====================================================== */}
@@ -1544,7 +1584,6 @@ export default function PortalPage() {
         {activeTab === 'dashboard' && (
 
           <div className="space-y-8">
-
 
             {/* STATS */}
 
@@ -2209,7 +2248,13 @@ export default function PortalPage() {
                           ? 'bg-orange-100 text-orange-700'
                           : member.generation === 2
                           ? 'bg-pink-100 text-pink-700'
-                          : 'bg-purple-100 text-purple-700'
+                          : member.generation === 3
+                          ? 'bg-purple-100 text-purple-700'
+                          : member.generation === 4
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : member.generation === 5
+                          ? 'bg-violet-100 text-violet-700'
+                          : 'bg-cyan-100 text-cyan-700'
                       }`}
                     >
 
@@ -2519,9 +2564,7 @@ export default function PortalPage() {
 
                   resetEventForm();
 
-                  setShowEventForm(
-                    false
-                  );
+                  setShowEventForm(false);
 
                 }}
                 className="text-gray-400 hover:text-gray-600"
@@ -2671,9 +2714,7 @@ export default function PortalPage() {
 
                     resetEventForm();
 
-                    setShowEventForm(
-                      false
-                    );
+                    setShowEventForm(false);
 
                   }}
                   className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium"
@@ -2852,9 +2893,7 @@ export default function PortalPage() {
 
                   resetMemberForm();
 
-                  setShowMemberForm(
-                    false
-                  );
+                  setShowMemberForm(false);
 
                 }}
                 className="text-gray-400 hover:text-gray-600"
@@ -2921,7 +2960,63 @@ export default function PortalPage() {
                   Generation 4 — Great-Grandchildren
                 </option>
 
+                <option value="5">
+                  Generation 5 — Great-Great-Grandchildren
+                </option>
+
+                <option value="6">
+                  Generation 6 — Great-Great-Great-Grandchildren
+                </option>
+
               </select>
+
+
+              {/* ==================================================
+                  BIRTH DATE / DATE OF PASSING
+              ================================================== */}
+
+              <div className="grid grid-cols-2 gap-3">
+
+                <div>
+
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Birth Date (optional)
+                  </label>
+
+                  <input
+                    type="date"
+                    value={memberBirthDate}
+                    onChange={(e) =>
+                      setMemberBirthDate(
+                        e.target.value
+                      )
+                    }
+                    className="input-field"
+                  />
+
+                </div>
+
+
+                <div>
+
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Date of Passing (if applicable)
+                  </label>
+
+                  <input
+                    type="date"
+                    value={memberDateOfPassing}
+                    onChange={(e) =>
+                      setMemberDateOfPassing(
+                        e.target.value
+                      )
+                    }
+                    className="input-field"
+                  />
+
+                </div>
+
+              </div>
 
 
               <input
@@ -3027,9 +3122,7 @@ export default function PortalPage() {
 
                     resetMemberForm();
 
-                    setShowMemberForm(
-                      false
-                    );
+                    setShowMemberForm(false);
 
                   }}
                   className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium"
@@ -3063,3 +3156,4 @@ export default function PortalPage() {
     </div>
   );
 }
+

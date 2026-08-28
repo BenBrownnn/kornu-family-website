@@ -43,7 +43,7 @@ export default function HomePage() {
     { label: 'Family Members', value: '47+', icon: Users },
     { label: 'Years Together', value: '100+', icon: Heart },
     { label: 'Countries', value: '5', icon: MapPin },
-    { label: 'Generations', value: '4', icon: Star },
+    { label: 'Generations', value: '6', icon: Star },
   ];
 
   const formatDate = (dateStr: string) => {

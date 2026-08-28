@@ -8,7 +8,6 @@ import GalleryPage from './pages/GalleryPage';
 import EventsPage from './pages/EventsPage';
 import StoriesPage from './pages/StoriesPage';
 import SignInPage from './pages/SignInPage';
-import PortalPage from './pages/PortalPage';
 import RequestAccessPage from './pages/RequestAccessPage';
 
 export default function App() {
@@ -46,7 +45,7 @@ export default function App() {
         return <RequestAccessPage />;
 
       case 'portal':
-        return <PortalPage />;
+        return <HomePage />;
 
       default:
         return <HomePage />;
