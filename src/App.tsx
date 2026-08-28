@@ -1,7 +1,7 @@
-
 import { useEffect } from 'react';
 import { useStore } from './store/useStore';
 import Navbar from './components/Navbar';
+
 import HomePage from './pages/HomePage';
 import FamilyPage from './pages/FamilyPage';
 import GalleryPage from './pages/GalleryPage';
@@ -9,6 +9,7 @@ import EventsPage from './pages/EventsPage';
 import StoriesPage from './pages/StoriesPage';
 import SignInPage from './pages/SignInPage';
 import RequestAccessPage from './pages/RequestAccessPage';
+import PortalPage from './pages/PortalPage';
 
 export default function App() {
   const { currentPage, initAuth } = useStore();
@@ -18,7 +19,10 @@ export default function App() {
   }, [initAuth]);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
   }, [currentPage]);
 
   const renderPage = () => {
@@ -45,7 +49,7 @@ export default function App() {
         return <RequestAccessPage />;
 
       case 'portal':
-        return <HomePage />;
+        return <PortalPage />;
 
       default:
         return <HomePage />;
