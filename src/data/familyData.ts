@@ -44,9 +44,9 @@ export interface GalleryItem {
   category: string;
   description: string;
 }
-/* 
+ 
 export const familyMembers: FamilyMember[] = [
-  {
+  /*{
     id: '1',
     name: 'GranPa John Lily Kornu',
     role: 'Family Patriarch',
@@ -150,8 +150,9 @@ export const familyMembers: FamilyMember[] = [
     occupation: 'Pediatric Nurse',
     tags: ['Nurse', 'Caregiver', 'Compassionate'],
   },
+  */
 ];
-*/
+
 
 export const familyEvents: FamilyEvent[] = [
   {
