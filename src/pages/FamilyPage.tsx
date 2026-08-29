@@ -9,6 +9,7 @@ import {
   Heart,
   BookOpen,
   Sprout,
+  ChevronDown,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
@@ -224,6 +225,14 @@ export default function FamilyPage() {
     );
   };
 
+
+  const [expandedGens, setExpandedGens] = useState<number[]>([1, 2, 3, 4, 5, 6]);
+
+const toggleGen = (gen: number) => {
+  setExpandedGens(prev =>
+    prev.includes(gen) ? prev.filter(g => g !== gen) : [...prev, gen]
+  );
+};
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -265,48 +274,87 @@ export default function FamilyPage() {
             FAMILY SUMMARY CARDS
         ====================================================== */}
 
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-10">
+        {/* Members grouped by generation */}
+<div className="space-y-6">
+  {([1, 2, 3, 4, 5, 6] as const).map((gen) => {
+    const genMembers = filtered.filter((m) => m.generation === gen);
+    if (genMembers.length === 0) return null;
 
-          {([1, 2, 3, 4, 5, 6] as const).map(
-            (gen) => {
+    const meta = GENERATION_META[gen];
+    const isExpanded = expandedGens.includes(gen);
 
-              const meta =
-                GENERATION_META[gen];
+    return (
+      <div key={gen} className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
+        <button
+          onClick={() => toggleGen(gen)}
+          className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className={`w-3 h-3 rounded-full ${meta.badge}`} />
+            <h3 className="font-montserrat text-lg font-bold text-gray-900">
+              Generation {gen} — {meta.label}
+            </h3>
+            <span className="text-sm text-gray-400">({genMembers.length})</span>
+          </div>
+          <ChevronDown
+            size={18}
+            className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
+          />
+        </button>
 
-              const count =
-                allMembers.filter(
-                  (m) =>
-                    Number(m.generation) === gen
-                ).length;
-
-              return (
-                <div
-                  key={gen}
-                  className="bg-white border border-gray-200 rounded-2xl p-5 text-center"
-                >
-
-                  <div
-                    className={`w-2 h-2 rounded-full ${meta.badge} mx-auto mb-3`}
+        {isExpanded && (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-5 pt-0">
+            {genMembers.map((member) => (
+              <div
+                key={member.id}
+                className="member-card cursor-pointer group"
+                onClick={() => setSelected(member.id === selected ? null : member.id)}
+              >
+                <div className="relative h-56 overflow-hidden rounded-t-[20px]">
+                  <img
+                    src={member.image}
+                    alt={member.name}
+                    className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
+                      member.dateOfPassing ? 'grayscale-[30%]' : ''
+                    }`}
+                    onError={handleImageError}
                   />
-
-                  <div className="text-3xl font-bold font-['Montserrat'] text-gray-900">
-                    {count}
+                  {member.dateOfPassing && (
+                    <div className="absolute top-3 left-3">
+                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-900/80 text-white">
+                        🕊️ In Memory
+                      </span>
+                    </div>
+                  )}
+                  <div className="member-overlay">
+                    <div>
+                      <div className="flex items-center gap-1 mb-1">
+                        <MapPin size={10} className="text-white/80" />
+                        <span className="text-white/80 text-xs">{member.location}</span>
+                      </div>
+                      <p className="text-white text-xs">{member.occupation}</p>
+                    </div>
                   </div>
-
-                  <div className="text-sm font-medium text-gray-700">
-                    {meta.label}
-                  </div>
-
-                  <div className="text-xs text-gray-400">
-                    Generation {gen}
-                  </div>
-
                 </div>
-              );
-            }
-          )}
-
-        </div>
+                <div className="p-4">
+                  <h3 className="font-bold text-gray-900 font['Montserrat'] text-sm leading-tight">{member.name}</h3>
+                  <p className={`text-xs font-medium mt-0.5 ${meta.accent}`}>{member.role}</p>
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {(Array.isArray(member.tags) ? member.tags : []).slice(0, 2).map((tag: string) => (
+                      <span key={tag} className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  })}
+</div>
 
         {/* ======================================================
             SEARCH & FILTER
