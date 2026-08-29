@@ -4,7 +4,7 @@ import {
   Shield, Users, MessageCircle, Calendar, FileText, Bell, Settings,
   LogOut, TreePine, ArrowRight, Heart, Lock, Star, TrendingUp, Plus, Image, X,
 } from 'lucide-react';
-import { familyMembers, familyEvents, familyStories } from '../data/familyData';
+import { familyEvents, familyStories } from '../data/familyData';
 import { supabase } from '../lib/supabaseClient';
 import FamilyTreeNode from '@/components/FamilyTreeNode';
 
@@ -225,7 +225,7 @@ export default function PortalPage() {
 
   const allEvents = [...dbEvents, ...familyEvents];
   const allAnnouncements = [...dbAnnouncements, ...fallbackAnnouncements];
-  const allMembers = [...dbMembers, ...familyMembers];
+  const allMembers = [...dbMembers];
 
   const getParentsOfChild = (childId: string) =>
     parentChildRelationships

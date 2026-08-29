@@ -1,7 +1,6 @@
 
 import { useEffect, useState } from 'react';
 import { useStore } from '../store/useStore';
-import { familyMembers } from '../data/familyData';
 import {
   Search,
   MapPin,
@@ -94,7 +93,7 @@ export default function FamilyPage() {
   const [selected, setSelected] = useState<string | null>(null);
   const [dbMembers, setDbMembers] = useState<any[]>([]);
 
-  const allMembers = [...dbMembers, ...familyMembers];
+  const allMembers: any[] = [...dbMembers];
 
   // ============================================================
   // FILTER MEMBERS

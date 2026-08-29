@@ -44,7 +44,7 @@ export interface GalleryItem {
   category: string;
   description: string;
 }
-
+/* 
 export const familyMembers: FamilyMember[] = [
   {
     id: '1',
@@ -151,6 +151,7 @@ export const familyMembers: FamilyMember[] = [
     tags: ['Nurse', 'Caregiver', 'Compassionate'],
   },
 ];
+*/
 
 export const familyEvents: FamilyEvent[] = [
   {
