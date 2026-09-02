@@ -400,12 +400,37 @@ const buildTree = (): TreeNode[] => {
     };
   };
 
-  /* A root is a member who does not appear as somebody's child. */
+   /* A root is a member who does not appear as somebody's child. */
   const childIds = new Set(
     parentChildRelationships.map((relationship) => relationship.child_id)
   );
 
-  const roots = dbMembers.filter((member) => !childIds.has(member.id));
+  const rootCandidates = dbMembers.filter((member) => !childIds.has(member.id));
+
+  /*
+   * If two root candidates are married to each other, only one of them
+   * should become a tree root — the other will already appear as their
+   * spouse inside SingleMarriage/MultipleMarriages. Otherwise the same
+   * couple renders as two separate trees.
+   */
+  const rootCandidateIds = new Set(rootCandidates.map((member) => member.id));
+  const excludedAsSpouse = new Set<string>();
+
+  marriages.forEach((marriage) => {
+    const { spouse_1_id, spouse_2_id } = marriage;
+    if (
+      spouse_1_id &&
+      spouse_2_id &&
+      rootCandidateIds.has(spouse_1_id) &&
+      rootCandidateIds.has(spouse_2_id) &&
+      !excludedAsSpouse.has(spouse_1_id)
+    ) {
+      // Keep spouse_1 as the root, drop spouse_2 from the root list
+      excludedAsSpouse.add(spouse_2_id);
+    }
+  });
+
+  const roots = rootCandidates.filter((member) => !excludedAsSpouse.has(member.id));
 
   /* Keep the tree visible even if relationship data is incomplete. */
   const rootMembers =
