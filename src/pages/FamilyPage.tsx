@@ -85,37 +85,136 @@ const FAMILY_VALUES = [
   },
 ];
 
+type FamilyMember = {
+  id: string;
+  name: string;
+  role: string;
+  age?: number | null;
+  bio: string;
+  image: string;
+  generation: number;
+  birthDate: string | null;
+  dateOfPassing: string | null;
+  location: string;
+  occupation: string;
+  tags: string[];
+};
+
+/**
+ * Normalizes tags coming from Supabase.
+ *
+ * Supports:
+ * - PostgreSQL arrays
+ * - JSON strings: ["2nd Son", "Councellor"]
+ * - comma-separated strings: "2nd Son, Councellor"
+ * - single strings: "2nd Son"
+ */
+function normalizeTags(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value
+      .map((tag) => String(tag).trim())
+      .filter(Boolean);
+  }
+
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+
+    if (!trimmed) {
+      return [];
+    }
+
+    // Try JSON first
+    try {
+      const parsed = JSON.parse(trimmed);
+
+      if (Array.isArray(parsed)) {
+        return parsed
+          .map((tag) => String(tag).trim())
+          .filter(Boolean);
+      }
+
+      if (typeof parsed === 'string' && parsed.trim()) {
+        return [parsed.trim()];
+      }
+    } catch {
+      // Not JSON — continue below
+    }
+
+    // PostgreSQL array format:
+    // {"2nd Son","Councellor"}
+    if (
+      trimmed.startsWith('{') &&
+      trimmed.endsWith('}')
+    ) {
+      return trimmed
+        .slice(1, -1)
+        .split(',')
+        .map((tag) =>
+          tag
+            .trim()
+            .replace(/^"(.*)"$/, '$1')
+        )
+        .filter(Boolean);
+    }
+
+    // Comma-separated format
+    if (trimmed.includes(',')) {
+      return trimmed
+        .split(',')
+        .map((tag) => tag.trim())
+        .filter(Boolean);
+    }
+
+    // Single tag
+    return [trimmed];
+  }
+
+  return [];
+}
+
 export default function FamilyPage() {
   const { setCurrentPage } = useStore();
 
   const [search, setSearch] = useState('');
   const [genFilter, setGenFilter] = useState('All');
   const [selected, setSelected] = useState<string | null>(null);
-  const [dbMembers, setDbMembers] = useState<any[]>([]);
+  const [dbMembers, setDbMembers] = useState<FamilyMember[]>([]);
 
-  const allMembers: any[] = [...dbMembers];
+  const [expandedGens, setExpandedGens] = useState<number[]>([
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+  ]);
+
+  const allMembers: FamilyMember[] = [...dbMembers];
 
   // ============================================================
   // FILTER MEMBERS
   // ============================================================
 
-  const filtered = allMembers.filter((m) => {
-    const query = search.toLowerCase();
+  const filtered = allMembers.filter((member) => {
+    const query = search.toLowerCase().trim();
 
     const matchSearch =
-      (m.name || '').toLowerCase().includes(query) ||
-      (m.role || '').toLowerCase().includes(query) ||
-      (m.occupation || '').toLowerCase().includes(query);
+      member.name.toLowerCase().includes(query) ||
+      member.role.toLowerCase().includes(query) ||
+      member.occupation.toLowerCase().includes(query) ||
+      member.tags.some((tag) =>
+        tag.toLowerCase().includes(query)
+      );
 
     const matchGen =
       genFilter === 'All' ||
-      `Generation ${m.generation}` === genFilter;
+      `Generation ${member.generation}` === genFilter;
 
     return matchSearch && matchGen;
   });
 
   const selectedMember = allMembers.find(
-    (m) => m.id === selected
+    (member) => member.id === selected
   );
 
   // ============================================================
@@ -137,10 +236,24 @@ export default function FamilyPage() {
   };
 
   // ============================================================
+  // TOGGLE GENERATION
+  // ============================================================
+
+  const toggleGen = (gen: number) => {
+    setExpandedGens((prev) =>
+      prev.includes(gen)
+        ? prev.filter((g) => g !== gen)
+        : [...prev, gen]
+    );
+  };
+
+  // ============================================================
   // FETCH MEMBERS FROM SUPABASE
   // ============================================================
 
   useEffect(() => {
+    let mounted = true;
+
     const fetchMembers = async () => {
       const { data, error } = await supabase
         .from('members')
@@ -157,44 +270,49 @@ export default function FamilyPage() {
         return;
       }
 
-      if (data) {
-        setDbMembers(
-          data.map((m: any) => ({
-            id: m.id,
-            name: m.name,
-            role: m.role || '',
-            age: m.age,
-            bio: m.bio || '',
-            image:
-              m.image ||
-              '/images/placeholder.jpg',
-            generation:
-              Number(m.generation) || 1,
-
-            // IMPORTANT:
-            // These come directly from Supabase
-            birthDate:
-              m.birth_date || null,
-
-            dateOfPassing:
-              m.date_of_passing || null,
-
-            location:
-              m.location || '',
-
-            occupation:
-              m.occupation || '',
-
-            tags:
-              Array.isArray(m.tags)
-                ? m.tags
-                : [],
-          }))
-        );
+      if (!mounted || !data) {
+        return;
       }
+
+      const members: FamilyMember[] = data.map(
+        (member: any) => ({
+          id: member.id,
+          name: member.name || '',
+          role: member.role || '',
+          age: member.age ?? null,
+          bio: member.bio || '',
+          image:
+            member.image ||
+            '/images/placeholder.jpg',
+          generation:
+            Number(member.generation) || 1,
+
+          birthDate:
+            member.birth_date || null,
+
+          dateOfPassing:
+            member.date_of_passing || null,
+
+          location:
+            member.location || '',
+
+          occupation:
+            member.occupation || '',
+
+          // IMPORTANT:
+          // Normalize every possible Supabase tag format.
+          tags: normalizeTags(member.tags),
+        })
+      );
+
+      setDbMembers(members);
     };
 
     fetchMembers();
+
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   // ============================================================
@@ -224,14 +342,6 @@ export default function FamilyPage() {
     );
   };
 
-
-  const [expandedGens, setExpandedGens] = useState<number[]>([1, 2, 3, 4, 5, 6]);
-
-const toggleGen = (gen: number) => {
-  setExpandedGens(prev =>
-    prev.includes(gen) ? prev.filter(g => g !== gen) : [...prev, gen]
-  );
-};
   return (
     <div className="min-h-screen bg-gray-50">
 
@@ -270,96 +380,213 @@ const toggleGen = (gen: number) => {
       <div className="max-w-6xl mx-auto px-4 py-12">
 
         {/* ======================================================
-            FAMILY SUMMARY CARDS
+            MEMBERS GROUPED BY GENERATION
         ====================================================== */}
 
-        {/* Members grouped by generation */}
-<div className="space-y-6">
-  {([1, 2, 3, 4, 5, 6] as const).map((gen) => {
-    const genMembers = filtered.filter((m) => m.generation === gen);
-    if (genMembers.length === 0) return null;
+        <div className="space-y-6">
 
-    const meta = GENERATION_META[gen];
-    const isExpanded = expandedGens.includes(gen);
+          {([1, 2, 3, 4, 5, 6] as const).map(
+            (gen) => {
 
-    return (
-      <div key={gen} className="bg-white border border-gray-200 rounded-2xl overflow-hidden">
-        <button
-          onClick={() => toggleGen(gen)}
-          className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors"
-        >
-          <div className="flex items-center gap-3">
-            <div className={`w-3 h-3 rounded-full ${meta.badge}`} />
-            <h3 className="font-montserrat text-lg font-bold text-gray-900">
-              Generation {gen} — {meta.label}
-            </h3>
-            <span className="text-sm text-gray-400">({genMembers.length})</span>
-          </div>
-          <ChevronDown
-            size={18}
-            className={`text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`}
-          />
-        </button>
+              const genMembers = filtered.filter(
+                (member) =>
+                  member.generation === gen
+              );
 
-        {isExpanded && (
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-5 pt-0">
-            {genMembers.map((member) => (
-              <div
-                key={member.id}
-                className="member-card cursor-pointer group"
-                onClick={() => setSelected(member.id === selected ? null : member.id)}
-              >
-                <div className="relative h-56 overflow-hidden rounded-t-[20px]">
-                  <img
-                    src={member.image}
-                    alt={member.name}
-                    className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
-                      member.dateOfPassing ? 'grayscale-[30%]' : ''
-                    }`}
-                    onError={handleImageError}
-                  />
-                  {member.dateOfPassing && (
-                    <div className="absolute top-3 left-3">
-                      <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-900/80 text-white">
-                        🕊️ In Memory
+              if (genMembers.length === 0) {
+                return null;
+              }
+
+              const meta =
+                GENERATION_META[gen];
+
+              const isExpanded =
+                expandedGens.includes(gen);
+
+              return (
+                <div
+                  key={gen}
+                  className="bg-white border border-gray-200 rounded-2xl overflow-hidden"
+                >
+
+                  <button
+                    onClick={() =>
+                      toggleGen(gen)
+                    }
+                    className="w-full flex items-center justify-between p-5 hover:bg-gray-50 transition-colors"
+                  >
+
+                    <div className="flex items-center gap-3">
+
+                      <div
+                        className={`w-3 h-3 rounded-full ${meta.badge}`}
+                      />
+
+                      <h3 className="font-montserrat text-lg font-bold text-gray-900">
+                        Generation {gen} — {meta.label}
+                      </h3>
+
+                      <span className="text-sm text-gray-400">
+                        ({genMembers.length})
                       </span>
+
                     </div>
+
+                    <ChevronDown
+                      size={18}
+                      className={`text-gray-400 transition-transform ${
+                        isExpanded
+                          ? 'rotate-180'
+                          : ''
+                      }`}
+                    />
+
+                  </button>
+
+                  {isExpanded && (
+
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 p-5 pt-0">
+
+                      {genMembers.map(
+                        (member) => (
+
+                          <div
+                            key={member.id}
+                            className="member-card cursor-pointer group"
+                            onClick={() =>
+                              setSelected(
+                                member.id === selected
+                                  ? null
+                                  : member.id
+                              )
+                            }
+                          >
+
+                            <div className="relative h-56 overflow-hidden rounded-t-[20px]">
+
+                              <img
+                                src={member.image}
+                                alt={member.name}
+                                className={`w-full h-full object-cover transition-transform duration-500 group-hover:scale-105 ${
+                                  member.dateOfPassing
+                                    ? 'grayscale-[30%]'
+                                    : ''
+                                }`}
+                                onError={
+                                  handleImageError
+                                }
+                              />
+
+                              {member.dateOfPassing && (
+
+                                <div className="absolute top-3 left-3">
+
+                                  <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-900/80 text-white">
+                                    🕊️ In Memory
+                                  </span>
+
+                                </div>
+
+                              )}
+
+                              <div className="member-overlay">
+
+                                <div>
+
+                                  {member.location && (
+
+                                    <div className="flex items-center gap-1 mb-1">
+
+                                      <MapPin
+                                        size={10}
+                                        className="text-white/80"
+                                      />
+
+                                      <span className="text-white/80 text-xs">
+                                        {member.location}
+                                      </span>
+
+                                    </div>
+
+                                  )}
+
+                                  {member.occupation && (
+
+                                    <p className="text-white text-xs">
+                                      {member.occupation}
+                                    </p>
+
+                                  )}
+
+                                </div>
+
+                              </div>
+
+                            </div>
+
+                            <div className="p-4">
+
+                              <h3 className="font-bold text-gray-900 font-['Montserrat'] text-sm leading-tight">
+                                {member.name}
+                              </h3>
+
+                              <p
+                                className={`text-xs font-medium mt-0.5 ${meta.accent}`}
+                              >
+                                {member.role}
+                              </p>
+
+                              {/* TAGS */}
+
+                              {member.tags.length > 0 && (
+
+                                <div className="flex flex-wrap gap-1 mt-2">
+
+                                  {member.tags
+                                    .slice(0, 2)
+                                    .map(
+                                      (
+                                        tag,
+                                        index
+                                      ) => (
+
+                                        <span
+                                          key={`${member.id}-gen-tag-${index}-${tag}`}
+                                          className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full"
+                                        >
+                                          {tag}
+                                        </span>
+
+                                      )
+                                    )}
+
+                                </div>
+
+                              )}
+
+                            </div>
+
+                          </div>
+
+                        )
+                      )}
+
+                    </div>
+
                   )}
-                  <div className="member-overlay">
-                    <div>
-                      <div className="flex items-center gap-1 mb-1">
-                        <MapPin size={10} className="text-white/80" />
-                        <span className="text-white/80 text-xs">{member.location}</span>
-                      </div>
-                      <p className="text-white text-xs">{member.occupation}</p>
-                    </div>
-                  </div>
+
                 </div>
-                <div className="p-4">
-                  <h3 className="font-bold text-gray-900 font['Montserrat'] text-sm leading-tight">{member.name}</h3>
-                  <p className={`text-xs font-medium mt-0.5 ${meta.accent}`}>{member.role}</p>
-                  <div className="flex flex-wrap gap-1 mt-2">
-                    {(Array.isArray(member.tags) ? member.tags : []).slice(0, 2).map((tag: string) => (
-                      <span key={tag} className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    );
-  })}
-</div>
+              );
+            }
+          )}
+
+        </div>
 
         {/* ======================================================
             SEARCH & FILTER
         ====================================================== */}
 
-        <div className="flex flex-col md:flex-row gap-4 mb-8">
+        <div className="flex flex-col md:flex-row gap-4 mb-8 mt-10">
 
           <div className="relative flex-1">
 
@@ -382,20 +609,20 @@ const toggleGen = (gen: number) => {
 
           <div className="flex gap-2 flex-wrap">
 
-            {GENERATIONS.map((g) => (
+            {GENERATIONS.map((generation) => (
 
               <button
-                key={g}
+                key={generation}
                 onClick={() =>
-                  setGenFilter(g)
+                  setGenFilter(generation)
                 }
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                  genFilter === g
+                  genFilter === generation
                     ? 'bg-gray-900 text-white'
                     : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
                 }`}
               >
-                {g}
+                {generation}
               </button>
 
             ))}
@@ -441,9 +668,7 @@ const toggleGen = (gen: number) => {
                 }
               >
 
-                {/* ==================================================
-                    MEMBER IMAGE
-                ================================================== */}
+                {/* MEMBER IMAGE */}
 
                 <div className="relative h-56 overflow-hidden rounded-t-[20px]">
 
@@ -516,9 +741,7 @@ const toggleGen = (gen: number) => {
 
                 </div>
 
-                {/* ==================================================
-                    MEMBER CARD INFORMATION
-                ================================================== */}
+                {/* MEMBER CARD INFORMATION */}
 
                 <div className="p-4">
 
@@ -532,9 +755,7 @@ const toggleGen = (gen: number) => {
                     {member.role}
                   </p>
 
-                  {/* ==================================================
-                      BIRTH / PASSING DATES
-                  ================================================== */}
+                  {/* BIRTH / PASSING DATES */}
 
                   {(birthDate || passingDate) && (
 
@@ -543,10 +764,13 @@ const toggleGen = (gen: number) => {
                       {birthDate && (
 
                         <p className="text-xs text-gray-500">
+
                           <span className="font-medium text-gray-700">
                             Born:
                           </span>{' '}
+
                           {birthDate}
+
                         </p>
 
                       )}
@@ -554,10 +778,13 @@ const toggleGen = (gen: number) => {
                       {passingDate && (
 
                         <p className="text-xs text-gray-500">
+
                           <span className="font-medium text-gray-700">
                             Passed:
                           </span>{' '}
+
                           {passingDate}
+
                         </p>
 
                       )}
@@ -566,31 +793,33 @@ const toggleGen = (gen: number) => {
 
                   )}
 
-                  {/* ==================================================
-                      TAGS
-                  ================================================== */}
+                  {/* TAGS */}
 
-                  <div className="flex flex-wrap gap-1 mt-2">
+                  {member.tags.length > 0 && (
 
-                    {(Array.isArray(member.tags)
-                      ? member.tags
-                      : []
-                    )
-                      .slice(0, 2)
-                      .map(
-                        (tag: string) => (
+                    <div className="flex flex-wrap gap-1 mt-2">
 
-                          <span
-                            key={tag}
-                            className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full"
-                          >
-                            {tag}
-                          </span>
+                      {member.tags
+                        .slice(0, 2)
+                        .map(
+                          (
+                            tag,
+                            index
+                          ) => (
 
-                        )
-                      )}
+                            <span
+                              key={`${member.id}-tag-${index}-${tag}`}
+                              className="bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded-full"
+                            >
+                              {tag}
+                            </span>
 
-                  </div>
+                          )
+                        )}
+
+                    </div>
+
+                  )}
 
                 </div>
 
@@ -688,9 +917,7 @@ const toggleGen = (gen: number) => {
 
                   )}
 
-                  {/* ==================================================
-                      DATES
-                  ================================================== */}
+                  {/* DATES */}
 
                   {(
                     selectedMember.birthDate ||
@@ -787,37 +1014,37 @@ const toggleGen = (gen: number) => {
 
                 {/* TAGS */}
 
-                {Array.isArray(
-                  selectedMember.tags
-                ) &&
-                  selectedMember.tags.length > 0 && (
+                {selectedMember.tags.length > 0 && (
 
-                    <div>
+                  <div>
 
-                      <p className="text-gray-600 mb-3 font-medium">
-                        Interests
-                      </p>
+                    <p className="text-gray-600 mb-3 font-medium">
+                      Interests
+                    </p>
 
-                      <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-2">
 
-                        {selectedMember.tags.map(
-                          (tag: string) => (
+                      {selectedMember.tags.map(
+                        (
+                          tag,
+                          index
+                        ) => (
 
-                            <span
-                              key={tag}
-                              className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm"
-                            >
-                              {tag}
-                            </span>
+                          <span
+                            key={`${selectedMember.id}-detail-tag-${index}-${tag}`}
+                            className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm"
+                          >
+                            {tag}
+                          </span>
 
-                          )
-                        )}
-
-                      </div>
+                        )
+                      )}
 
                     </div>
 
-                  )}
+                  </div>
+
+                )}
 
               </div>
 
@@ -849,7 +1076,7 @@ const toggleGen = (gen: number) => {
           <div className="grid md:grid-cols-4 gap-6">
 
             {FAMILY_VALUES.map(
-              (value, idx) => {
+              (value, index) => {
 
                 const Icon =
                   value.icon;
@@ -857,7 +1084,7 @@ const toggleGen = (gen: number) => {
                 return (
 
                   <div
-                    key={idx}
+                    key={index}
                     className="bg-white border border-gray-200 rounded-2xl p-6 text-center hover:shadow-lg transition-shadow"
                   >
 
@@ -914,16 +1141,16 @@ const toggleGen = (gen: number) => {
                     className="w-full h-full object-cover"
                     onError={(e) => {
 
-                      const t =
+                      const target =
                         e.target as HTMLImageElement;
 
-                      t.style.display =
+                      target.style.display =
                         'none';
 
                       if (
-                        t.parentElement
+                        target.parentElement
                       ) {
-                        t.parentElement.innerHTML =
+                        target.parentElement.innerHTML =
                           '<span style="color:white;font-weight:900;font-size:1.3rem;font-family:serif;">K</span>';
                       }
 
