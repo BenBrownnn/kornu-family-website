@@ -1029,7 +1029,7 @@ const buildTree = (): TreeNode[] => {
               return (
                 <FamilyTreeNode
                   key={rootNode.member.id}
-                  member={rootNode.member}
+                  person={rootNode.member}
                   marriages={marriageGroups}
                   children={rootNode.children.map((child) => child.member)}
                   isRoot
