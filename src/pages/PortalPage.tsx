@@ -13,7 +13,7 @@ type DbEvent = { id: string; title: string; date: string; location: string; desc
 type DbAnnouncement = { id: string; title: string; author: string; date: string; priority: string; };
 type DbMember = {
   id: string; name: string; role: string; age?: number; bio: string; image: string;
-  generation: number; birthDate?: string; dateOfPassing?: string;
+  generation: number; birthDate?:string | null; dateOfPassing?: string | null;
   location?: string; occupation?: string; tags: string[]; marriageId?: string | null;
 };
 type Marriage = { id: string; spouse_1_id: string | null; spouse_2_id: string | null; marriage_date: string | null; status: string; };
@@ -400,37 +400,42 @@ const buildTree = (): TreeNode[] => {
     };
   };
 
-   /* A root is a member who does not appear as somebody's child. */
+    /* A root is a member who does not appear as somebody's child. */
   const childIds = new Set(
     parentChildRelationships.map((relationship) => relationship.child_id)
   );
 
   const rootCandidates = dbMembers.filter((member) => !childIds.has(member.id));
-
-  /*
-   * If two root candidates are married to each other, only one of them
-   * should become a tree root — the other will already appear as their
-   * spouse inside SingleMarriage/MultipleMarriages. Otherwise the same
-   * couple renders as two separate trees.
-   */
   const rootCandidateIds = new Set(rootCandidates.map((member) => member.id));
-  const excludedAsSpouse = new Set<string>();
+  const excludedFromRoots = new Set<string>();
 
   marriages.forEach((marriage) => {
     const { spouse_1_id, spouse_2_id } = marriage;
-    if (
-      spouse_1_id &&
-      spouse_2_id &&
+    if (!spouse_1_id || !spouse_2_id) return;
+
+    const spouse1HasParent = childIds.has(spouse_1_id);
+    const spouse2HasParent = childIds.has(spouse_2_id);
+
+    if (spouse1HasParent && !spouse2HasParent) {
+      // spouse_2 married in (no recorded parent) — will appear nested
+      // as spouse_1's spouse, so drop them from the root list.
+      excludedFromRoots.add(spouse_2_id);
+    } else if (spouse2HasParent && !spouse1HasParent) {
+      excludedFromRoots.add(spouse_1_id);
+    } else if (
+      !spouse1HasParent &&
+      !spouse2HasParent &&
       rootCandidateIds.has(spouse_1_id) &&
       rootCandidateIds.has(spouse_2_id) &&
-      !excludedAsSpouse.has(spouse_1_id)
+      !excludedFromRoots.has(spouse_1_id)
     ) {
-      // Keep spouse_1 as the root, drop spouse_2 from the root list
-      excludedAsSpouse.add(spouse_2_id);
+      // Neither has a recorded parent (e.g. the founding couple) —
+      // keep spouse_1 as the root, drop spouse_2 to avoid a duplicate tree.
+      excludedFromRoots.add(spouse_2_id);
     }
   });
 
-  const roots = rootCandidates.filter((member) => !excludedAsSpouse.has(member.id));
+  const roots = rootCandidates.filter((member) => !excludedFromRoots.has(member.id));
 
   /* Keep the tree visible even if relationship data is incomplete. */
   const rootMembers =
