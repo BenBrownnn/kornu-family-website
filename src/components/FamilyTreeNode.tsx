@@ -24,7 +24,7 @@ type FamilyTreeNodeProps = {
 };
 
 /* -------------------------------------------------------------------------- */
-/* Person card                                                                */
+/* Person Card                                                                */
 /* -------------------------------------------------------------------------- */
 
 const PersonCard = ({ member }: { member: DbMember }) => {
@@ -36,7 +36,7 @@ const PersonCard = ({ member }: { member: DbMember }) => {
     .filter(Boolean)
     .slice(0, 2)
     .map((part) => part.charAt(0))
-    .join('')
+    .join("")
     .toUpperCase();
 
   return (
@@ -49,15 +49,15 @@ const PersonCard = ({ member }: { member: DbMember }) => {
               alt={member.name}
               className="h-full w-full object-cover"
               onError={(event) => {
-                event.currentTarget.style.display = 'none';
+                event.currentTarget.style.display = "none";
 
                 const fallback =
                   event.currentTarget.parentElement?.querySelector(
-                    '[data-initials]'
+                    "[data-initials]"
                   ) as HTMLElement | null;
 
                 if (fallback) {
-                  fallback.style.display = 'flex';
+                  fallback.style.display = "flex";
                 }
               }}
             />
@@ -66,10 +66,10 @@ const PersonCard = ({ member }: { member: DbMember }) => {
           <div
             data-initials
             className={`h-full w-full items-center justify-center bg-gray-100 text-sm font-bold text-gray-500 ${
-              member.image ? 'hidden' : 'flex'
+              member.image ? "hidden" : "flex"
             }`}
           >
-            {initials || '?'}
+            {initials || "?"}
           </div>
         </div>
 
@@ -98,13 +98,68 @@ const PersonCard = ({ member }: { member: DbMember }) => {
 /* -------------------------------------------------------------------------- */
 
 const Heart = () => (
-  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white bg-white text-xl shadow-md">
+  <div className="relative z-10 flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 border-white bg-white text-xl shadow-md">
     ❤️
   </div>
 );
 
 /* -------------------------------------------------------------------------- */
-/* Central person with one marriage                                           */
+/* Children                                                                    */
+/* -------------------------------------------------------------------------- */
+
+const ChildrenRow = ({
+  children,
+}: {
+  children: TreeNode[];
+}) => {
+  const validChildren = (children || []).filter(
+    (child) => child && child.member
+  );
+
+  if (validChildren.length === 0) {
+    return null;
+  }
+
+  /* One child */
+  if (validChildren.length === 1) {
+    return (
+      <div className="flex flex-col items-center">
+        <div className="h-8 w-px bg-gray-300" />
+
+        <FamilyTreeNode node={validChildren[0]} />
+      </div>
+    );
+  }
+
+  /* Multiple children */
+  return (
+    <div className="flex flex-col items-center">
+      <div className="h-8 w-px bg-gray-300" />
+
+      <div className="relative">
+        {/* Horizontal connection between children */}
+        <div className="absolute left-1/2 top-0 h-px w-[calc(100%-180px)] -translate-x-1/2 bg-gray-300" />
+
+        <div className="flex items-start justify-center gap-8">
+          {validChildren.map((child) => (
+            <div
+              key={child.member.id}
+              className="relative flex flex-col items-center"
+            >
+              {/* Vertical connection to horizontal line */}
+              <div className="h-6 w-px bg-gray-300" />
+
+              <FamilyTreeNode node={child} />
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* -------------------------------------------------------------------------- */
+/* Single Marriage                                                            */
 /* -------------------------------------------------------------------------- */
 
 const SingleMarriage = ({
@@ -118,11 +173,6 @@ const SingleMarriage = ({
     return null;
   }
 
-  /*
-   * The central person must appear only once.
-   *
-   * Determine which side the spouse belongs on.
-   */
   const centralPerson = node.member;
 
   const spouse =
@@ -132,34 +182,38 @@ const SingleMarriage = ({
 
   return (
     <div className="flex flex-col items-center">
+      {/* Couple */}
       <div className="flex items-center justify-center">
         <PersonCard member={centralPerson} />
 
         <div className="mx-4 flex items-center">
           <div className="h-px w-10 bg-gray-300" />
+
           <Heart />
+
           <div className="h-px w-10 bg-gray-300" />
         </div>
 
         <PersonCard member={spouse} />
       </div>
 
-      <MarriageChildren marriage={marriage} />
+      {/* Children */}
+      <ChildrenRow children={marriage.children || []} />
     </div>
   );
 };
 
 /* -------------------------------------------------------------------------- */
-/* Multiple marriages                                                         */
+/* Multiple Marriages                                                         */
 /*                                                                            */
-/*                         CENTRAL PERSON                                     */
-/*                              │                                             */
-/*                 ┌────────────┴────────────┐                               */
-/*                 │                         │                               */
-/*              Spouse 1                  Spouse 2                           */
-/*                 ❤️                         ❤️                              */
-/*                 │                         │                               */
-/*              Children                  Children                           */
+/*                         DAUGHTER                                           */
+/*                            │                                               */
+/*                            │                                               */
+/*                    ─────── ❤️ ───────                                      */
+/*                    │                 │                                     */
+/*                HUSBAND 1         HUSBAND 2                                */
+/*                    │                 │                                     */
+/*                CHILDREN          CHILDREN                                 */
 /* -------------------------------------------------------------------------- */
 
 const MultipleMarriages = ({
@@ -180,183 +234,124 @@ const MultipleMarriages = ({
     return <PersonCard member={node.member} />;
   }
 
-  /*
-   * IMPORTANT:
-   *
-   * The central person is rendered ONCE.
-   * Spouses are rendered around that single person.
-   *
-   * This prevents:
-   *
-   * Daughter
-   * Husband 1
-   * Daughter
-   * Husband 2
-   *
-   * and instead produces:
-   *
-   *              Daughter
-   *                 │
-   *       ┌─────────┴─────────┐
-   *       │                   │
-   *   Husband 1           Husband 2
-   */
-
-  const leftMarriage = marriages[0];
-  const rightMarriages = marriages.slice(1);
-
   const getSpouse = (marriage: MarriageGroup) =>
     marriage.spouse1.id === node.member.id
       ? marriage.spouse2
       : marriage.spouse1;
 
+  /*
+   * For multiple marriages we deliberately use only TWO spouse positions:
+   *
+   *                 PERSON
+   *                    │
+   *                    │
+   *             ───────❤️───────
+   *             │              │
+   *          SPOUSE 1       SPOUSE 2
+   *
+   * This prevents the central person and relationship
+   * from being duplicated for every marriage.
+   */
+
+  const firstMarriage = marriages[0];
+  const secondMarriage = marriages[1];
+
+  const firstSpouse = getSpouse(firstMarriage);
+  const secondSpouse = secondMarriage
+    ? getSpouse(secondMarriage)
+    : null;
+
+  /*
+   * If there is only one valid marriage, use the
+   * normal single-marriage layout.
+   */
+  if (!secondSpouse) {
+    return (
+      <SingleMarriage
+        node={node}
+        marriage={firstMarriage}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col items-center">
-      {/* Central person */}
+      {/* ------------------------------------------------------------------ */}
+      {/* CENTRAL PERSON                                                      */}
+      {/* ------------------------------------------------------------------ */}
+
       <PersonCard member={node.member} />
 
-      {/* Main branching line */}
+      {/* Daughter → relationship connection */}
       <div className="h-8 w-px bg-gray-300" />
 
-      <div className="relative flex items-start justify-center gap-12">
-        {/* Horizontal branch */}
-        {marriages.length > 1 && (
-          <div className="absolute left-1/2 right-1/2 top-0 h-px w-[calc(100%-180px)] -translate-x-1/2 bg-gray-300" />
-        )}
+      {/* ------------------------------------------------------------------ */}
+      {/* CENTRAL RELATIONSHIP                                                */}
+      {/* ------------------------------------------------------------------ */}
 
-        {/* Left marriage */}
-        <MarriageBranch
-          marriage={leftMarriage}
-          spouse={getSpouse(leftMarriage)}
-        />
+      <div className="relative flex items-start justify-center">
+        {/* The single horizontal relationship line */}
+        <div className="absolute left-[90px] right-[90px] top-5 h-px bg-gray-300" />
 
-        {/* Right marriages */}
-        {rightMarriages.map((marriage) => (
-          <MarriageBranch
-            key={marriage.id}
-            marriage={marriage}
-            spouse={getSpouse(marriage)}
-          />
-        ))}
-      </div>
-    </div>
-  );
-};
-
-/* -------------------------------------------------------------------------- */
-/* Individual marriage branch                                                 */
-/* -------------------------------------------------------------------------- */
-
-const MarriageBranch = ({
-  marriage,
-  spouse,
-}: {
-  marriage: MarriageGroup;
-  spouse: DbMember;
-}) => {
-  if (!marriage || !spouse) {
-    return null;
-  }
-
-  const children = (marriage.children || []).filter(
-    (child) => child && child.member
-  );
-
-  return (
-    <div className="flex min-w-[220px] flex-col items-center">
-      {/* Connection from central person */}
-      <div className="h-5 w-px bg-gray-300" />
-
-      {/* Spouse */}
-      <PersonCard member={spouse} />
-
-      {/* Heart directly below spouse */}
-      <div className="relative flex flex-col items-center">
-        <div className="h-4 w-px bg-gray-300" />
-        <Heart />
-      </div>
-
-      {/* Children */}
-      {children.length > 0 && (
-        <div className="flex flex-col items-center">
+        {/* LEFT SPOUSE */}
+        <div className="relative flex w-[250px] flex-col items-center">
+          {/* Connection from horizontal relationship line */}
           <div className="h-5 w-px bg-gray-300" />
 
-          {children.length === 1 ? (
-            <div className="flex flex-col items-center">
-              <div className="h-5 w-px bg-gray-300" />
+          <PersonCard member={firstSpouse} />
 
-              <FamilyTreeNode
-                key={children[0].member.id}
-                node={children[0]}
-              />
-            </div>
-          ) : (
-            <div className="relative pt-5">
-              {/* Children horizontal line */}
-              <div className="absolute left-1/2 top-0 h-px w-[calc(100%-80px)] -translate-x-1/2 bg-gray-300" />
-
-              <div className="flex items-start justify-center gap-8">
-                {children.map((child) => (
-                  <div
-                    key={child.member.id}
-                    className="relative flex flex-col items-center"
-                  >
-                    <div className="absolute left-1/2 top-0 h-5 w-px -translate-x-1/2 bg-gray-300" />
-
-                    <div className="pt-5">
-                      <FamilyTreeNode node={child} />
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {/* Children */}
+          <ChildrenRow children={firstMarriage.children || []} />
         </div>
-      )}
-    </div>
-  );
-};
 
-/* -------------------------------------------------------------------------- */
-/* Children belonging to a single marriage                                   */
-/* -------------------------------------------------------------------------- */
+        {/* CENTRAL HEART */}
+        <div className="relative z-20 flex w-[80px] flex-col items-center">
+          <Heart />
+        </div>
 
-const MarriageChildren = ({
-  marriage,
-}: {
-  marriage: MarriageGroup;
-}) => {
-  const children = (marriage.children || []).filter(
-    (child) => child && child.member
-  );
+        {/* RIGHT SPOUSE */}
+        <div className="relative flex w-[250px] flex-col items-center">
+          {/* Connection from horizontal relationship line */}
+          <div className="h-5 w-px bg-gray-300" />
 
-  if (children.length === 0) {
-    return null;
-  }
+          <PersonCard member={secondSpouse} />
 
-  return (
-    <div className="mt-6 flex flex-col items-center">
-      <div className="h-8 w-px bg-gray-300" />
+          {/* Children */}
+          <ChildrenRow children={secondMarriage.children || []} />
+        </div>
+      </div>
 
-      {children.length === 1 ? (
-        <FamilyTreeNode node={children[0]} />
-      ) : (
-        <div className="relative pt-5">
-          <div className="absolute left-1/2 top-0 h-px w-[calc(100%-100px)] -translate-x-1/2 bg-gray-300" />
+      {/* ------------------------------------------------------------------ */}
+      {/* ADDITIONAL MARRIAGES                                                */}
+      {/* ------------------------------------------------------------------ */}
 
-          <div className="flex items-start justify-center gap-10">
-            {children.map((child) => (
-              <div
-                key={child.member.id}
-                className="relative flex flex-col items-center"
-              >
-                <div className="absolute left-1/2 top-0 h-5 w-px -translate-x-1/2 bg-gray-300" />
+      {marriages.length > 2 && (
+        <div className="mt-8 flex flex-col items-center">
+          <div className="mb-4 text-xs font-medium text-gray-400">
+            Additional relationships
+          </div>
 
-                <div className="pt-5">
-                  <FamilyTreeNode node={child} />
+          <div className="flex flex-wrap justify-center gap-8">
+            {marriages.slice(2).map((marriage) => {
+              const spouse = getSpouse(marriage);
+
+              return (
+                <div
+                  key={marriage.id}
+                  className="flex flex-col items-center"
+                >
+                  <div className="flex items-center">
+                    <Heart />
+                  </div>
+
+                  <div className="mt-3">
+                    <PersonCard member={spouse} />
+                  </div>
+
+                  <ChildrenRow children={marriage.children || []} />
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -365,7 +360,7 @@ const MarriageChildren = ({
 };
 
 /* -------------------------------------------------------------------------- */
-/* Main component                                                              */
+/* Main Family Tree Node                                                      */
 /* -------------------------------------------------------------------------- */
 
 const FamilyTreeNode = ({
@@ -387,27 +382,27 @@ const FamilyTreeNode = ({
       )
     : [];
 
-  /*
-   * No spouse:
-   *
-   * Just show the person.
-   */
+  /* No spouse */
   if (marriages.length === 0) {
     return (
-      <div className="flex flex-col items-center">
+      <div
+        className={`flex flex-col items-center ${
+          isRoot ? "pt-2" : ""
+        }`}
+      >
         <PersonCard member={node.member} />
       </div>
     );
   }
 
-  /*
-   * One spouse:
-   *
-   * Person ❤️ Spouse
-   */
+  /* One spouse */
   if (marriages.length === 1) {
     return (
-      <div className="flex flex-col items-center">
+      <div
+        className={`flex flex-col items-center ${
+          isRoot ? "pt-2" : ""
+        }`}
+      >
         <SingleMarriage
           node={node}
           marriage={marriages[0]}
@@ -416,24 +411,11 @@ const FamilyTreeNode = ({
     );
   }
 
-  /*
-   * Multiple spouses:
-   *
-   *                 PERSON
-   *                    │
-   *       ┌────────────┴────────────┐
-   *       │                         │
-   *    SPOUSE 1                  SPOUSE 2
-   *       ❤️                         ❤️
-   *       │                         │
-   *    CHILDREN                  CHILDREN
-   *
-   * The person is rendered exactly ONCE.
-   */
+  /* Multiple spouses */
   return (
     <div
       className={`flex flex-col items-center ${
-        isRoot ? 'pt-2' : ''
+        isRoot ? "pt-2" : ""
       }`}
     >
       <MultipleMarriages node={node} />
