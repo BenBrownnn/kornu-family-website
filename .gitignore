@@ -1,2 +1,7 @@
 node_modules/
 dist/
+# Environment configuration
+**/.env
+
+# VS Code Configuration
+**/.vscode/

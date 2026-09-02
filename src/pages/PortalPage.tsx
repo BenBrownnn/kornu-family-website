@@ -648,7 +648,7 @@ const buildTree = (): TreeNode[] => {
                 { icon: Users, label: 'Family Members', value: allMembers.length, color: 'text-orange-500', bg: 'bg-orange-50' },
                 { icon: Calendar, label: 'Upcoming Events', value: allEvents.length, color: 'text-blue-500', bg: 'bg-blue-50' },
                 { icon: MessageCircle, label: 'Family Stories', value: familyStories.length, color: 'text-purple-500', bg: 'bg-purple-50' },
-                { icon: Heart, label: 'Countries', value: 8, color: 'text-pink-500', bg: 'bg-pink-50' },
+                { icon: Heart, label: 'Countries', value: 1, color: 'text-pink-500', bg: 'bg-pink-50' },
               ].map(({ icon: Icon, label, value, color, bg }) => (
                 <div key={label} className={`${bg} rounded-2xl p-5 border border-white`}>
                   <Icon size={20} className={`${color} mb-3`} />

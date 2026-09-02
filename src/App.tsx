@@ -10,7 +10,7 @@ import StoriesPage from './pages/StoriesPage';
 import SignInPage from './pages/SignInPage';
 import RequestAccessPage from './pages/RequestAccessPage';
 import PortalPage from './pages/PortalPage';
-
+import BirthdayBanner from './components/BirthdayBanner';
 export default function App() {
   const { currentPage, initAuth } = useStore();
 
@@ -55,14 +55,17 @@ export default function App() {
         return <HomePage />;
     }
   };
+return (
+  <div className="min-h-screen">
+    <Navbar />
 
-  return (
-    <div className="min-h-screen">
-      <Navbar />
+    <div className="pt-20">
+      <BirthdayBanner />
 
       <main>
         {renderPage()}
       </main>
     </div>
-  );
+  </div>
+);
 }

@@ -42,7 +42,7 @@ export default function HomePage() {
   const stats = [
     { label: 'Family Members', value: '47+', icon: Users },
     { label: 'Years Together', value: '100+', icon: Heart },
-    { label: 'Countries', value: '5', icon: MapPin },
+    { label: 'Countries', value: '1', icon: MapPin },
     { label: 'Generations', value: '6', icon: Star },
   ];
 

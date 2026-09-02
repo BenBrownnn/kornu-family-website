@@ -260,7 +260,7 @@ const toggleGen = (gen: number) => {
           </h1>
 
           <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-            Four generations, eight countries, one unbreakable bond.
+            Six generations, One Region, one unbreakable bond.
             Every face here is a chapter in our family story.
           </p>
 
