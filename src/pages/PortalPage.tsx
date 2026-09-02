@@ -1016,9 +1016,26 @@ const buildTree = (): TreeNode[] => {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 overflow-x-auto">
         <div className="family-tree min-w-max">
           <ul>
-            {buildTree().map((rootNode) => (
-              <FamilyTreeNode key={rootNode.member.id} node={rootNode} />
-            ))}
+            {buildTree().map((rootNode) => {
+              const marriageGroups = rootNode.spouse
+                ? [{
+                    id: `${rootNode.member.id}-${rootNode.spouse.id}`,
+                    spouse1: rootNode.member,
+                    spouse2: rootNode.spouse,
+                    children: rootNode.children.map((child) => child.member),
+                  }]
+                : [];
+
+              return (
+                <FamilyTreeNode
+                  key={rootNode.member.id}
+                  member={rootNode.member}
+                  marriages={marriageGroups}
+                  children={rootNode.children.map((child) => child.member)}
+                  isRoot
+                />
+              );
+            })}
           </ul>
         </div>
       </div>
