@@ -255,49 +255,168 @@ export default function PortalPage() {
 
   type TreeNode = {
   member: DbMember;
-  spouse?: DbMember;
+  marriages: MarriageGroup[];
+};
+
+type MarriageGroup = {
+  id: string;
+  spouse1: DbMember;
+  spouse2: DbMember;
   children: TreeNode[];
 };
 
 const buildTree = (): TreeNode[] => {
-  // Find every member with NO parent recorded — these are the roots (Gen 1 founders)
-  const childIds = new Set(parentChildRelationships.map((r) => r.child_id));
-  const roots = dbMembers.filter((m) => !childIds.has(m.id));
+  /*
+   * FAMILY TREE STRUCTURE
+   *
+   * Person → Marriage → ❤️ → Children → Person → Marriage → ...
+   *
+   * A person may have multiple marriages. Each marriage is kept
+   * as its own group so its spouse and children stay together.
+   */
+  const memberMap = new Map(
+    dbMembers.map((member) => [member.id, member])
+  );
 
-  const alreadyPlaced = new Set<string>();
+  /*
+   * Get the children belonging to one specific marriage.
+   *
+   * First use the explicit members.marriage_id assignment.
+   * Then fall back to children whose parent-child records contain
+   * BOTH spouses. This keeps existing relationship data working.
+   */
+  const getChildrenForMarriage = (marriage: Marriage): DbMember[] => {
+    const spouseIds = [
+      marriage.spouse_1_id,
+      marriage.spouse_2_id,
+    ].filter((id): id is string => Boolean(id));
 
-  const buildNode = (member: DbMember): TreeNode | null => {
-    if (alreadyPlaced.has(member.id)) return null;
-    alreadyPlaced.add(member.id);
+    if (spouseIds.length === 0) {
+      return [];
+    }
 
-    // Find this member's spouse via marriages
-    const marriage = marriages.find(
-      (m) => m.spouse_1_id === member.id || m.spouse_2_id === member.id
+    const explicitlyAssigned = dbMembers.filter(
+      (member) => member.marriageId === marriage.id
     );
-    const spouseId = marriage
-      ? marriage.spouse_1_id === member.id ? marriage.spouse_2_id : marriage.spouse_1_id
-      : null;
-    const spouse = spouseId ? dbMembers.find((m) => m.id === spouseId) : undefined;
-    if (spouse) alreadyPlaced.add(spouse.id);
 
-    // Find children of this couple (or this member alone)
-    const childIdsOfThis = parentChildRelationships
-      .filter((r) => r.parent_id === member.id || (spouse && r.parent_id === spouse.id))
-      .map((r) => r.child_id);
-    const uniqueChildIds = Array.from(new Set(childIdsOfThis));
+    const parentRelationships = parentChildRelationships.filter(
+      (relationship) => spouseIds.includes(relationship.parent_id)
+    );
 
-    const children = uniqueChildIds
-      .map((id) => dbMembers.find((m) => m.id === id))
-      .filter((m): m is DbMember => Boolean(m))
-      .map((child) => buildNode(child))
-      .filter((n): n is TreeNode => Boolean(n));
+    const possibleChildIds = new Set(
+      parentRelationships.map((relationship) => relationship.child_id)
+    );
 
-    return { member, spouse, children };
+    const childrenFromBothParents = dbMembers.filter((member) => {
+      if (!possibleChildIds.has(member.id)) {
+        return false;
+      }
+
+      const parentIds = new Set(
+        parentChildRelationships
+          .filter((relationship) => relationship.child_id === member.id)
+          .map((relationship) => relationship.parent_id)
+      );
+
+      return spouseIds.every((spouseId) => parentIds.has(spouseId));
+    });
+
+    const children = [
+      ...explicitlyAssigned,
+      ...childrenFromBothParents,
+    ];
+
+    return Array.from(
+      new Map(children.map((child) => [child.id, child])).values()
+    );
   };
 
-  return roots
-    .map((root) => buildNode(root))
-    .filter((n): n is TreeNode => Boolean(n));
+  /*
+   * Recursively build a member and every marriage belonging to them.
+   *
+   * We deliberately do NOT use a global "alreadyPlaced" set.
+   * A person can appear in multiple marriages, so each marriage must
+   * remain visible. The ancestor set only prevents circular data from
+   * causing infinite recursion.
+   */
+  const buildNode = (
+    member: DbMember,
+    ancestorIds: Set<string> = new Set()
+  ): TreeNode => {
+    if (ancestorIds.has(member.id)) {
+      return {
+        member,
+        marriages: [],
+      };
+    }
+
+    const nextAncestorIds = new Set(ancestorIds);
+    nextAncestorIds.add(member.id);
+
+    const memberMarriages = marriages.filter(
+      (marriage) =>
+        marriage.spouse_1_id === member.id ||
+        marriage.spouse_2_id === member.id
+    );
+
+    const marriageGroups: MarriageGroup[] = memberMarriages
+      .map((marriage) => {
+        const spouseId =
+          marriage.spouse_1_id === member.id
+            ? marriage.spouse_2_id
+            : marriage.spouse_1_id;
+
+        if (!spouseId) {
+          return null;
+        }
+
+        const spouse = memberMap.get(spouseId);
+
+        if (!spouse) {
+          return null;
+        }
+
+        const marriageChildren = getChildrenForMarriage(marriage);
+
+        const children = marriageChildren
+          .filter((child) => child.id !== member.id)
+          .filter((child) => child.id !== spouse.id)
+          .map((child) => buildNode(child, nextAncestorIds));
+
+        return {
+          id: marriage.id,
+          spouse1: member,
+          spouse2: spouse,
+          children,
+        };
+      })
+      .filter(
+        (marriage): marriage is MarriageGroup => marriage !== null
+      );
+
+    return {
+      member,
+      marriages: marriageGroups,
+    };
+  };
+
+  /* A root is a member who does not appear as somebody's child. */
+  const childIds = new Set(
+    parentChildRelationships.map((relationship) => relationship.child_id)
+  );
+
+  const roots = dbMembers.filter((member) => !childIds.has(member.id));
+
+  /* Keep the tree visible even if relationship data is incomplete. */
+  const rootMembers =
+    roots.length > 0
+      ? roots
+      : dbMembers.filter(
+          (member, index, array) =>
+            array.findIndex((item) => item.id === member.id) === index
+        );
+
+  return rootMembers.map((root) => buildNode(root));
 };
 
   useEffect(() => {
@@ -648,7 +767,7 @@ const buildTree = (): TreeNode[] => {
                 { icon: Users, label: 'Family Members', value: allMembers.length, color: 'text-orange-500', bg: 'bg-orange-50' },
                 { icon: Calendar, label: 'Upcoming Events', value: allEvents.length, color: 'text-blue-500', bg: 'bg-blue-50' },
                 { icon: MessageCircle, label: 'Family Stories', value: familyStories.length, color: 'text-purple-500', bg: 'bg-purple-50' },
-                { icon: Heart, label: 'Countries', value: 1, color: 'text-pink-500', bg: 'bg-pink-50' },
+                { icon: Heart, label: 'Countries', value: 8, color: 'text-pink-500', bg: 'bg-pink-50' },
               ].map(({ icon: Icon, label, value, color, bg }) => (
                 <div key={label} className={`${bg} rounded-2xl p-5 border border-white`}>
                   <Icon size={20} className={`${color} mb-3`} />
@@ -1016,26 +1135,13 @@ const buildTree = (): TreeNode[] => {
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 overflow-x-auto">
         <div className="family-tree min-w-max">
           <ul>
-            {buildTree().map((rootNode) => {
-              const marriageGroups = rootNode.spouse
-                ? [{
-                    id: `${rootNode.member.id}-${rootNode.spouse.id}`,
-                    spouse1: rootNode.member,
-                    spouse2: rootNode.spouse,
-                    children: rootNode.children.map((child) => child.member),
-                  }]
-                : [];
-
-              return (
-                <FamilyTreeNode
-                  key={rootNode.member.id}
-                  person={rootNode.member}
-                  marriages={marriageGroups}
-                  children={rootNode.children.map((child) => child.member)}
-                  isRoot
-                />
-              );
-            })}
+            {buildTree().map((rootNode) => (
+              <FamilyTreeNode
+                key={rootNode.member.id}
+                node={rootNode}
+                isRoot={true}
+              />
+            ))}
           </ul>
         </div>
       </div>
