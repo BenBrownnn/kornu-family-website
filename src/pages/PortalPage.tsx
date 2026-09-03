@@ -19,6 +19,16 @@ type DbMember = {
 type Marriage = { id: string; spouse_1_id: string | null; spouse_2_id: string | null; marriage_date: string | null; status: string; };
 type ParentChildRelationship = { id: string; parent_id: string; child_id: string; relationship_type: 'father' | 'mother' | 'parent' | string; created_at?: string; };
 
+type DbDocument = {
+  id: string;
+  title: string;
+  category: string | null;
+  file_name: string;
+  file_path: string;
+  uploaded_by: string | null;
+  created_at: string;
+};
+
 const portalFeatures = [
   { id: 'messages', icon: MessageCircle, title: 'Family Chat', desc: 'Private family message board', color: 'from-blue-400 to-cyan-500', count: '12 new' },
   { id: 'tree', icon: TreePine, title: 'Family Tree', desc: 'Interactive genealogy explorer', color: 'from-green-400 to-emerald-600', count: '6 gen' },
@@ -49,6 +59,13 @@ export default function PortalPage() {
   const [dbMembers, setDbMembers] = useState<DbMember[]>([]);
   const [marriages, setMarriages] = useState<Marriage[]>([]);
   const [parentChildRelationships, setParentChildRelationships] = useState<ParentChildRelationship[]>([]);
+  
+    const [documents, setDocuments] = useState<DbDocument[]>([]);
+  const [documentTitle, setDocumentTitle] = useState('');
+  const [documentCategory, setDocumentCategory] = useState('Family Records');
+  const [documentFile, setDocumentFile] = useState<File | null>(null);
+  const [uploadingDocument, setUploadingDocument] = useState(false);
+  const [documentError, setDocumentError] = useState('');
 
   const [showMarriageForm, setShowMarriageForm] = useState(false);
   const [marriageSpouse1, setMarriageSpouse1] = useState('');
@@ -152,6 +169,21 @@ export default function PortalPage() {
       .order('created_at', { ascending: true });
     if (error) { console.error('Error loading parent-child relationships:', error); return; }
     setParentChildRelationships((data || []) as ParentChildRelationship[]);
+  };
+
+    const fetchDocuments = async () => {
+    const { data, error } = await supabase
+      .from('documents')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error loading documents:', error);
+      setDocumentError('Unable to load family documents.');
+      return;
+    }
+
+    setDocuments((data || []) as DbDocument[]);
   };
 
   const resetMarriageForm = () => {
@@ -423,11 +455,13 @@ const buildTree = (): TreeNode[] => {
 
   useEffect(() => {
     if (!isAuthenticated) return;
+
     fetchEvents();
     fetchAnnouncements();
     fetchMembers();
     fetchMarriages();
     fetchParentChildRelationships();
+    fetchDocuments();
   }, [isAuthenticated]);
 
   const handleEventImageChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -435,6 +469,173 @@ const buildTree = (): TreeNode[] => {
     if (!selectedFile) return;
     setEventImageFile(selectedFile);
     setEventImagePreview(URL.createObjectURL(selectedFile));
+  };
+
+    const handleDocumentFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+
+    if (!selectedFile) return;
+
+    setDocumentError('');
+
+    const maxSize = 10 * 1024 * 1024;
+
+    if (selectedFile.size > maxSize) {
+      setDocumentError('The document is too large. Maximum file size is 10 MB.');
+      return;
+    }
+
+    setDocumentFile(selectedFile);
+
+    if (!documentTitle.trim()) {
+      const fileNameWithoutExtension = selectedFile.name.replace(/\.[^/.]+$/, '');
+      setDocumentTitle(fileNameWithoutExtension);
+    }
+  };
+
+  const resetDocumentForm = () => {
+    setDocumentTitle('');
+    setDocumentCategory('Family Records');
+    setDocumentFile(null);
+    setDocumentError('');
+  };
+
+  const openDocument = async (document: DbDocument) => {
+    setDocumentError('');
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('family-documents')
+        .createSignedUrl(document.file_path, 60 * 10);
+
+      if (error || !data?.signedUrl) {
+        console.error('Document access error:', error);
+        setDocumentError('Unable to open this document. Please try again.');
+        return;
+      }
+
+      window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+    } catch (error) {
+      console.error('Unexpected document access error:', error);
+      setDocumentError('Unable to open this document.');
+    }
+  };
+
+  const deleteDocument = async (document: DbDocument) => {
+    if (!isAdmin) {
+      setDocumentError('Only family administrators can delete documents.');
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Are you sure you want to delete "${document.title}"? This cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setDocumentError('');
+
+    try {
+      const { error: storageError } = await supabase.storage
+        .from('family-documents')
+        .remove([document.file_path]);
+
+      if (storageError) {
+        console.error('Document storage delete error:', storageError);
+        setDocumentError(storageError.message || 'Unable to delete the document file.');
+        return;
+      }
+
+      const { error: databaseError } = await supabase
+        .from('documents')
+        .delete()
+        .eq('id', document.id);
+
+      if (databaseError) {
+        console.error('Document database delete error:', databaseError);
+        setDocumentError(databaseError.message || 'Unable to delete the document record.');
+        return;
+      }
+
+      await fetchDocuments();
+
+    } catch (error) {
+      console.error('Unexpected document delete error:', error);
+      setDocumentError('Something went wrong while deleting the document.');
+    }
+  };
+
+  const uploadDocument = async () => {
+    setDocumentError('');
+
+    if (!currentUser) {
+      setDocumentError('You must be signed in to upload a document.');
+      return;
+    }
+
+    if (!documentTitle.trim()) {
+      setDocumentError('Please enter a document title.');
+      return;
+    }
+
+    if (!documentFile) {
+      setDocumentError('Please select a document to upload.');
+      return;
+    }
+
+    try {
+      setUploadingDocument(true);
+
+      const safeFileName = documentFile.name
+        .replace(/[^a-zA-Z0-9._-]/g, '_')
+        .replace(/_+/g, '_');
+
+      const filePath = `documents/${currentUser.id}/${crypto.randomUUID()}-${safeFileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('family-documents')
+        .upload(filePath, documentFile, {
+          cacheControl: '3600',
+          upsert: false,
+        });
+
+      if (uploadError) {
+        console.error('Document upload error:', uploadError);
+        setDocumentError(uploadError.message || 'Document upload failed.');
+        return;
+      }
+
+      const { error: insertError } = await supabase
+        .from('documents')
+        .insert({
+          title: documentTitle.trim(),
+          category: documentCategory,
+          file_name: documentFile.name,
+          file_path: filePath,
+          uploaded_by: currentUser.id,
+        });
+
+      if (insertError) {
+        console.error('Document record error:', insertError);
+
+        // Remove the uploaded file if the database record could not be created.
+        await supabase.storage
+          .from('family-documents')
+          .remove([filePath]);
+
+        setDocumentError(insertError.message || 'Unable to save document information.');
+        return;
+      }
+
+      resetDocumentForm();
+      await fetchDocuments();
+
+    } catch (error) {
+      console.error('Unexpected document upload error:', error);
+      setDocumentError('Something went wrong while uploading the document.');
+    } finally {
+      setUploadingDocument(false);
+    }
   };
 
   const handleMemberImageChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -1148,17 +1349,241 @@ const buildTree = (): TreeNode[] => {
   </div>
 )}
 
-        {activeTab === 'documents' && (
+               {activeTab === 'documents' && (
           <div>
-            <div className="mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900 flex items-center gap-2"><FileText size={20} className="text-orange-500" /> Family Documents</h2>
-              <p className="text-gray-500 text-sm mt-1">Important documents shared privately with the Kornu family.</p>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="font-montserrat text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <FileText size={20} className="text-orange-500" />
+                  Family Documents
+                </h2>
+                <p className="text-gray-500 text-sm mt-1">
+                  Important documents shared privately with the Kornu family.
+                </p>
+              </div>
+
+              <button
+               onClick={() => {
+  resetDocumentForm();
+  document.getElementById('family-document-file')?.click();
+}}
+                className="btn-primary py-2 px-4 text-sm"
+              >
+                <Plus size={14} />
+                Add Document
+              </button>
             </div>
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
-              <FileText size={44} className="mx-auto text-orange-300 mb-4" />
-              <h3 className="font-montserrat text-lg font-bold text-gray-900">Family Document Library</h3>
-              <p className="text-gray-500 text-sm max-w-lg mx-auto mt-2">This private area is ready for family documents. No document table has been added to Supabase yet, so no fake documents are displayed here.</p>
-              {isAdmin && <div className="mt-5 inline-flex items-center gap-2 rounded-xl bg-orange-50 text-orange-600 px-4 py-2 text-sm font-semibold"><Shield size={15} /> Administrator access</div>}
+
+            {documentError && (
+              <div className="mb-5 bg-red-50 border border-red-200 rounded-xl p-4 text-red-600 text-sm">
+                {documentError}
+              </div>
+            )}
+
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
+                  <FileText size={20} className="text-orange-500" />
+                </div>
+                <div>
+                  <h3 className="font-montserrat font-bold text-gray-900">
+                    Upload a Family Document
+                  </h3>
+                  <p className="text-gray-400 text-xs mt-0.5">
+                    Available to all authenticated family members
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Document Title
+                  </label>
+                  <input
+                    type="text"
+                    value={documentTitle}
+                    onChange={(e) => setDocumentTitle(e.target.value)}
+                    placeholder="e.g. 2026 Family Constitution"
+                    className="input-field"
+                    disabled={uploadingDocument}
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    Category
+                  </label>
+                  <select
+                    value={documentCategory}
+                    onChange={(e) => setDocumentCategory(e.target.value)}
+                    className="input-field"
+                    disabled={uploadingDocument}
+                  >
+                    <option value="Family Records">Family Records</option>
+                    <option value="Family Constitution">Family Constitution</option>
+                    <option value="Meeting Minutes">Meeting Minutes</option>
+                    <option value="Financial Records">Financial Records</option>
+                    <option value="Historical Records">Historical Records</option>
+                    <option value="Legal Documents">Legal Documents</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <label className="block text-xs font-medium text-gray-500 mb-1">
+                  Select Document
+                </label>
+
+                <label
+                  htmlFor="family-document-file"
+                  className="block border-2 border-dashed border-gray-200 rounded-2xl p-5 text-center cursor-pointer hover:border-orange-300 hover:bg-orange-50/30 transition-colors"
+                >
+                  {documentFile ? (
+                    <div>
+                      <FileText size={28} className="mx-auto text-orange-500 mb-2" />
+                      <p className="text-sm font-semibold text-gray-700">
+                        {documentFile.name}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        {(documentFile.size / (1024 * 1024)).toFixed(2)} MB
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <FileText size={28} className="mx-auto text-gray-300 mb-2" />
+                      <p className="text-sm text-gray-500">
+                        Click here to select a document
+                      </p>
+                      <p className="text-xs text-gray-400 mt-1">
+                        Maximum file size: 10 MB
+                      </p>
+                    </div>
+                  )}
+                </label>
+
+                <input
+                  id="family-document-file"
+                  type="file"
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png"
+                  onChange={handleDocumentFileChange}
+                  className="hidden"
+                  disabled={uploadingDocument}
+                />
+              </div>
+
+              <div className="flex justify-end mt-5">
+                <button
+                  onClick={uploadDocument}
+                  disabled={
+                    uploadingDocument ||
+                    !documentTitle.trim() ||
+                    !documentFile
+                  }
+                  className="btn-primary px-5 py-2.5 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {uploadingDocument ? 'Uploading...' : 'Upload Document'}
+                </button>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-6 border-b border-gray-100">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-montserrat font-bold text-gray-900">
+                      Document Library
+                    </h3>
+                    <p className="text-gray-400 text-xs mt-1">
+                      {documents.length} document{documents.length === 1 ? '' : 's'} available
+                    </p>
+                  </div>
+
+                  {isAdmin && (
+                    <span className="inline-flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-1.5 rounded-full text-xs font-semibold">
+                      <Shield size={13} />
+                      Admin can delete
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {documents.length === 0 ? (
+                <div className="p-10 text-center">
+                  <FileText size={44} className="mx-auto text-gray-300 mb-4" />
+                  <h3 className="font-montserrat text-lg font-bold text-gray-900">
+                    No documents yet
+                  </h3>
+                  <p className="text-gray-500 text-sm mt-2">
+                    Be the first family member to upload an important family document.
+                  </p>
+                </div>
+              ) : (
+                <div className="divide-y divide-gray-100">
+                  {documents.map((document) => (
+                    <div
+                      key={document.id}
+                      className="p-5 flex flex-col md:flex-row md:items-center gap-4 hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0">
+                        <FileText size={22} className="text-orange-500" />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-gray-900 text-sm truncate">
+                          {document.title}
+                        </h4>
+
+                        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+                          {document.category && (
+                            <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">
+                              {document.category}
+                            </span>
+                          )}
+
+                          <span className="text-xs text-gray-400">
+                            {document.file_name}
+                          </span>
+
+                          <span className="text-xs text-gray-400">
+                            ·
+                          </span>
+
+                          <span className="text-xs text-gray-400">
+                            {new Date(document.created_at).toLocaleDateString(
+                              'en-GB',
+                              {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              }
+                            )}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => openDocument(document)}
+                          className="px-3 py-2 rounded-xl bg-orange-50 text-orange-600 text-xs font-semibold hover:bg-orange-100 transition-colors"
+                        >
+                          Open
+                        </button>
+
+                        {isAdmin && (
+                          <button
+                            onClick={() => deleteDocument(document)}
+                            className="px-3 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors"
+                          >
+                            Delete
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         )}
