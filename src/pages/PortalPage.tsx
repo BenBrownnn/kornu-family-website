@@ -1,195 +1,41 @@
-import { useState, useEffect, type ChangeEvent } from 'react';
+import { useState, useEffect } from 'react';
 import { useStore } from '../store/useStore';
 import {
-  Shield,
-  Users,
-  MessageCircle,
-  Calendar,
-  FileText,
-  Bell,
-  Settings,
-  LogOut,
-  TreePine,
-  ArrowRight,
-  Heart,
-  Lock,
-  Star,
-  TrendingUp,
-  Plus,
-  Image,
-  X,
+  Shield, Users, MessageCircle, Calendar, FileText, Bell, Settings,
+  LogOut, TreePine, ArrowRight, Heart, Lock, Star, TrendingUp, Plus, Image, X,
 } from 'lucide-react';
 import { familyEvents, familyStories } from '../data/familyData';
 import { supabase } from '../lib/supabaseClient';
 import FamilyTreeNode from '@/components/FamilyTreeNode';
 
-type Message = {
-  id: string;
-  created_at: string;
-  user_id: string;
-  author_name: string;
-  text: string;
-};
-
-type DbEvent = {
-  id: string;
-  title: string;
-  date: string;
-  location: string;
-  description: string;
-  type: string;
-  image?: string | null;
-  rsvpCount?: number;
-};
-
-type DbAnnouncement = {
-  id: string;
-  title: string;
-  author: string;
-  date: string;
-  priority: string;
-};
-
+type Message = { id: string; created_at: string; user_id: string; author_name: string; text: string; };
+type DbEvent = { id: string; title: string; date: string; location: string; description: string; type: string; image?: string | null; rsvpCount?: number; };
+type DbAnnouncement = { id: string; title: string; author: string; date: string; priority: string; };
 type DbMember = {
-  id: string;
-  name: string;
-  role: string;
-  age?: number;
-  bio: string;
-  image: string;
-  generation: number;
-  birthDate?: string | null;
-  dateOfPassing?: string | null;
-  location?: string;
-  occupation?: string;
-  tags: string[];
-  marriageId?: string | null;
+  id: string; name: string; role: string; age?: number; bio: string; image: string;
+  generation: number; birthDate?: string; dateOfPassing?: string;
+  location?: string; occupation?: string; tags: string[]; marriageId?: string | null;
 };
-
-type Marriage = {
-  id: string;
-  spouse_1_id: string | null;
-  spouse_2_id: string | null;
-  marriage_date: string | null;
-  status: string;
-};
-
-type ParentChildRelationship = {
-  id: string;
-  parent_id: string;
-  child_id: string;
-  relationship_type:
-    | 'father'
-    | 'mother'
-    | 'parent'
-    | string;
-  created_at?: string;
-};
-
-type DbDocument = {
-  id: string;
-  title: string;
-  category: string | null;
-  file_name: string;
-  file_path: string;
-  uploaded_by: string | null;
-  created_at: string;
-};
+type Marriage = { id: string; spouse_1_id: string | null; spouse_2_id: string | null; marriage_date: string | null; status: string; };
+type ParentChildRelationship = { id: string; parent_id: string; child_id: string; relationship_type: 'father' | 'mother' | 'parent' | string; created_at?: string; };
 
 const portalFeatures = [
-  {
-    id: 'messages',
-    icon: MessageCircle,
-    title: 'Family Chat',
-    desc: 'Private family message board',
-    color: 'from-blue-400 to-cyan-500',
-    count: '12 new',
-  },
-  {
-    id: 'tree',
-    icon: TreePine,
-    title: 'Family Tree',
-    desc: 'Interactive genealogy explorer',
-    color: 'from-green-400 to-emerald-600',
-    count: '6 gen',
-  },
-  {
-    id: 'docs',
-    icon: FileText,
-    title: 'Family Documents',
-    desc: 'Shared important documents',
-    color: 'from-orange-400 to-amber-500',
-    count: '28 files',
-  },
-  {
-    id: 'events',
-    icon: Calendar,
-    title: 'My Events',
-    desc: 'Your RSVPs and calendar',
-    color: 'from-pink-400 to-rose-500',
-    count: '3 upcoming',
-  },
-  {
-    id: 'gallery',
-    icon: Image,
-    title: 'Private Gallery',
-    desc: 'Member-only photos',
-    color: 'from-purple-400 to-violet-600',
-    count: '145 photos',
-  },
-  {
-    id: 'settings',
-    icon: Settings,
-    title: 'Settings',
-    desc: 'Manage your profile',
-    color: 'from-gray-400 to-slate-600',
-    count: '',
-  },
+  { id: 'messages', icon: MessageCircle, title: 'Family Chat', desc: 'Private family message board', color: 'from-blue-400 to-cyan-500', count: '12 new' },
+  { id: 'tree', icon: TreePine, title: 'Family Tree', desc: 'Interactive genealogy explorer', color: 'from-green-400 to-emerald-600', count: '6 gen' },
+  { id: 'docs', icon: FileText, title: 'Family Documents', desc: 'Shared important documents', color: 'from-orange-400 to-amber-500', count: '28 files' },
+  { id: 'events', icon: Calendar, title: 'My Events', desc: 'Your RSVPs and calendar', color: 'from-pink-400 to-rose-500', count: '3 upcoming' },
+  { id: 'gallery', icon: Image, title: 'Private Gallery', desc: 'Member-only photos', color: 'from-purple-400 to-violet-600', count: '145 photos' },
+  { id: 'settings', icon: Settings, title: 'Settings', desc: 'Manage your profile', color: 'from-gray-400 to-slate-600', count: '' },
 ];
 
 const fallbackAnnouncements: DbAnnouncement[] = [
-  {
-    id: 'fallback-1',
-    title: 'Reunion 2025 Registration Open!',
-    date: '2025-01-15',
-    author: 'Kofi Kornu',
-    priority: 'high',
-  },
-  {
-    id: 'fallback-2',
-    title: "Elder Kweku's Birthday Dinner Details",
-    date: '2025-01-10',
-    author: 'Ama Kornu-Mensah',
-    priority: 'medium',
-  },
-  {
-    id: 'fallback-3',
-    title: 'New Baby! Welcome Kweku Jr.!',
-    date: '2025-01-05',
-    author: 'Family Admin',
-    priority: 'high',
-  },
+  { id: 'fallback-1', title: 'Reunion 2025 Registration Open!', date: '2025-01-15', author: 'Kofi Kornu', priority: 'high' },
+  { id: 'fallback-2', title: "Elder Kweku's Birthday Dinner Details", date: '2025-01-10', author: 'Ama Kornu-Mensah', priority: 'medium' },
+  { id: 'fallback-3', title: 'New Baby! Welcome Kweku Jr.!', date: '2025-01-05', author: 'Family Admin', priority: 'high' },
 ];
 
-type TreeNode = {
-  member: DbMember;
-  marriages: MarriageGroup[];
-};
-
-type MarriageGroup = {
-  id: string;
-  spouse1: DbMember;
-  spouse2: DbMember;
-  children: TreeNode[];
-};
-
 export default function PortalPage() {
-  const {
-    currentUser,
-    logout,
-    setCurrentPage,
-    isAuthenticated: isPortalAuthenticated,
-  } = useStore();
+  const { isAuthenticated, currentUser, logout, setCurrentPage } = useStore();
 
   const [activeTab, setActiveTab] = useState('dashboard');
 
@@ -202,16 +48,7 @@ export default function PortalPage() {
   const [dbAnnouncements, setDbAnnouncements] = useState<DbAnnouncement[]>([]);
   const [dbMembers, setDbMembers] = useState<DbMember[]>([]);
   const [marriages, setMarriages] = useState<Marriage[]>([]);
-  const [parentChildRelationships, setParentChildRelationships] =
-    useState<ParentChildRelationship[]>([]);
-
-  const [documents, setDocuments] = useState<DbDocument[]>([]);
-  const [documentTitle, setDocumentTitle] = useState('');
-  const [documentCategory, setDocumentCategory] =
-    useState('Family Records');
-  const [documentFile, setDocumentFile] = useState<File | null>(null);
-  const [uploadingDocument, setUploadingDocument] = useState(false);
-  const [documentError, setDocumentError] = useState('');
+  const [parentChildRelationships, setParentChildRelationships] = useState<ParentChildRelationship[]>([]);
 
   const [showMarriageForm, setShowMarriageForm] = useState(false);
   const [marriageSpouse1, setMarriageSpouse1] = useState('');
@@ -238,8 +75,7 @@ export default function PortalPage() {
   const [postingEvent, setPostingEvent] = useState(false);
   const [eventFormError, setEventFormError] = useState('');
   const [eventImageFile, setEventImageFile] = useState<File | null>(null);
-  const [eventImagePreview, setEventImagePreview] =
-    useState<string | null>(null);
+  const [eventImagePreview, setEventImagePreview] = useState<string | null>(null);
 
   const [annTitle, setAnnTitle] = useState('');
   const [annPriority, setAnnPriority] = useState('medium');
@@ -255,223 +91,91 @@ export default function PortalPage() {
   const [memberLocation, setMemberLocation] = useState('');
   const [memberOccupation, setMemberOccupation] = useState('');
   const [memberTags, setMemberTags] = useState('');
-
+  // Relationship selections made while creating a new member
   const [memberSpouseId, setMemberSpouseId] = useState('');
   const [memberFatherId, setMemberFatherId] = useState('');
   const [memberMotherId, setMemberMotherId] = useState('');
-
   const [memberImageFile, setMemberImageFile] = useState<File | null>(null);
-  const [memberImagePreview, setMemberImagePreview] =
-    useState<string | null>(null);
+  const [memberImagePreview, setMemberImagePreview] = useState<string | null>(null);
   const [postingMember, setPostingMember] = useState(false);
   const [memberFormError, setMemberFormError] = useState('');
 
-  const isAdmin =
-    currentUser?.role?.toLowerCase?.() === 'admin' ||
-    currentUser?.email?.toLowerCase?.() === 'admin@kornu.family';
+  const isAdmin = currentUser?.role === 'admin';
 
   const fetchEvents = async () => {
-    const { data, error } = await supabase
-      .from('events')
-      .select('*')
-      .order('date', { ascending: true });
-
-    if (error) {
-      console.error('Error loading events:', error);
-      return;
-    }
-
-    if (!data) {
-      setDbEvents([]);
-      return;
-    }
-
-    setDbEvents(
-      data.map((event) => ({
-        id: event.id,
-        title: event.title,
-        date: event.date,
-        location: event.location,
-        description: event.description || '',
-        type: event.type || 'celebration',
-        image: event.image || null,
-      }))
-    );
+    const { data, error } = await supabase.from('events').select('*').order('date', { ascending: true });
+    if (error) { console.error('Error loading events:', error); return; }
+    if (!data) { setDbEvents([]); return; }
+    setDbEvents(data.map((event) => ({
+      id: event.id, title: event.title, date: event.date, location: event.location,
+      description: event.description || '', type: event.type || 'celebration', image: event.image || null,
+    })));
   };
 
   const fetchAnnouncements = async () => {
-    const { data, error } = await supabase
-      .from('announcements')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error loading announcements:', error);
-      return;
-    }
-
-    if (!data) {
-      setDbAnnouncements([]);
-      return;
-    }
-
-    setDbAnnouncements(
-      data.map((a) => ({
-        id: a.id,
-        title: a.title,
-        author: a.author_name || 'Family Admin',
-        date: a.created_at,
-        priority: a.priority || 'medium',
-      }))
-    );
+    const { data, error } = await supabase.from('announcements').select('*').order('created_at', { ascending: false });
+    if (error) { console.error('Error loading announcements:', error); return; }
+    if (!data) { setDbAnnouncements([]); return; }
+    setDbAnnouncements(data.map((a) => ({
+      id: a.id, title: a.title, author: a.author_name || 'Family Admin', date: a.created_at, priority: a.priority || 'medium',
+    })));
   };
 
   const fetchMembers = async () => {
-    const { data, error } = await supabase
-      .from('members')
-      .select('*')
-      .order('generation', { ascending: true });
-
-    if (error) {
-      console.error('Error loading members:', error);
-      return;
-    }
-
-    if (!data) {
-      setDbMembers([]);
-      return;
-    }
-
-    setDbMembers(
-      data.map((m) => ({
-        id: m.id,
-        name: m.name,
-        role: m.role || '',
-        age: m.age,
-        bio: m.bio || '',
-        image: m.image || '/images/placeholder.jpg',
-        generation: Number(m.generation) || 1,
-        birthDate: m.birth_date || null,
-        dateOfPassing: m.date_of_passing || null,
-        location: m.location || '',
-        occupation: m.occupation || '',
-        tags: Array.isArray(m.tags) ? m.tags : [],
-        marriageId: m.marriage_id || null,
-      }))
-    );
+    const { data, error } = await supabase.from('members').select('*').order('generation', { ascending: true });
+    if (error) { console.error('Error loading members:', error); return; }
+    if (!data) { setDbMembers([]); return; }
+    setDbMembers(data.map((m) => ({
+      id: m.id, name: m.name, role: m.role || '', age: m.age, bio: m.bio || '',
+      image: m.image || '/images/placeholder.jpg', generation: Number(m.generation) || 1,
+      birthDate: m.birth_date || null, dateOfPassing: m.date_of_passing || null,
+      location: m.location || '', occupation: m.occupation || '',
+      tags: Array.isArray(m.tags) ? m.tags : [], marriageId: m.marriage_id || null,
+    })));
   };
 
   const fetchMarriages = async () => {
     const { data, error } = await supabase
       .from('marriages')
-      .select(
-        'id, spouse_1_id, spouse_2_id, marriage_date, status'
-      )
-      .order('marriage_date', {
-        ascending: true,
-        nullsFirst: false,
-      });
-
-    if (error) {
-      console.error('Error loading marriages:', error);
-      return;
-    }
-
+      .select('id, spouse_1_id, spouse_2_id, marriage_date, status')
+      .order('marriage_date', { ascending: true, nullsFirst: false });
+    if (error) { console.error('Error loading marriages:', error); return; }
     setMarriages((data || []) as Marriage[]);
   };
 
   const fetchParentChildRelationships = async () => {
     const { data, error } = await supabase
       .from('parent_child_relationships')
-      .select(
-        'id, parent_id, child_id, relationship_type, created_at'
-      )
+      .select('id, parent_id, child_id, relationship_type, created_at')
       .order('created_at', { ascending: true });
-
-    if (error) {
-      console.error(
-        'Error loading parent-child relationships:',
-        error
-      );
-      return;
-    }
-
-    setParentChildRelationships(
-      (data || []) as ParentChildRelationship[]
-    );
-  };
-
-  const fetchDocuments = async () => {
-    const { data, error } = await supabase
-      .from('documents')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error loading documents:', error);
-      setDocumentError('Unable to load family documents.');
-      return;
-    }
-
-    setDocuments((data || []) as DbDocument[]);
+    if (error) { console.error('Error loading parent-child relationships:', error); return; }
+    setParentChildRelationships((data || []) as ParentChildRelationship[]);
   };
 
   const resetMarriageForm = () => {
-    setMarriageSpouse1('');
-    setMarriageSpouse2('');
-    setMarriageDate('');
-    setMarriageStatus('married');
-    setMarriageFormError('');
+    setMarriageSpouse1(''); setMarriageSpouse2(''); setMarriageDate('');
+    setMarriageStatus('married'); setMarriageFormError('');
   };
 
   const submitMarriage = async () => {
     setMarriageFormError('');
-
-    if (!currentUser || !isAdmin) {
-      setMarriageFormError(
-        'Only family administrators can create relationships.'
-      );
-      return;
-    }
-
-    if (!marriageSpouse1 || !marriageSpouse2) {
-      setMarriageFormError('Please select both spouses.');
-      return;
-    }
-
-    if (marriageSpouse1 === marriageSpouse2) {
-      setMarriageFormError(
-        'A person cannot be married to themselves.'
-      );
-      return;
-    }
+    if (!currentUser || !isAdmin) { setMarriageFormError('Only family administrators can create relationships.'); return; }
+    if (!marriageSpouse1 || !marriageSpouse2) { setMarriageFormError('Please select both spouses.'); return; }
+    if (marriageSpouse1 === marriageSpouse2) { setMarriageFormError('A person cannot be married to themselves.'); return; }
 
     try {
       setPostingMarriage(true);
-
       const { error } = await supabase.from('marriages').insert({
-        spouse_1_id: marriageSpouse1,
-        spouse_2_id: marriageSpouse2,
-        marriage_date: marriageDate || null,
-        status: marriageStatus,
+        spouse_1_id: marriageSpouse1, spouse_2_id: marriageSpouse2,
+        marriage_date: marriageDate || null, status: marriageStatus,
       });
-
-      if (error) {
-        console.error('Error creating marriage:', error);
-        setMarriageFormError(
-          error.message || 'Unable to create relationship.'
-        );
-        return;
-      }
-
+      if (error) { console.error('Error creating marriage:', error); setMarriageFormError(error.message || 'Unable to create relationship.'); return; }
       resetMarriageForm();
       setShowMarriageForm(false);
       await fetchMarriages();
     } catch (error) {
       console.error('Unexpected marriage error:', error);
-      setMarriageFormError(
-        'Something went wrong. Please try again.'
-      );
+      setMarriageFormError('Something went wrong. Please try again.');
     } finally {
       setPostingMarriage(false);
     }
@@ -479,323 +183,180 @@ export default function PortalPage() {
 
   const assignChildToMarriage = async () => {
     setRelationshipError('');
+    if (!currentUser || !isAdmin) { setRelationshipError('Only family administrators can assign relationships.'); return; }
+    if (!selectedMarriageId || !selectedChildId) { setRelationshipError('Please select a marriage and a child.'); return; }
 
-    if (!currentUser || !isAdmin) {
-      setRelationshipError(
-        'Only family administrators can assign relationships.'
-      );
-      return;
-    }
-
-    if (!selectedMarriageId || !selectedChildId) {
-      setRelationshipError(
-        'Please select a marriage and a child.'
-      );
-      return;
-    }
-
-    const marriage = marriages.find(
-      (item) => item.id === selectedMarriageId
-    );
-
-    if (!marriage) {
-      setRelationshipError(
-        'The selected marriage could not be found.'
-      );
-      return;
-    }
+    const marriage = marriages.find((item) => item.id === selectedMarriageId);
+    if (!marriage) { setRelationshipError('The selected marriage could not be found.'); return; }
 
     try {
       setSavingRelationship(true);
 
-      const parentRows = [
-        marriage.spouse_1_id,
-        marriage.spouse_2_id,
-      ]
+      const parentRows = [marriage.spouse_1_id, marriage.spouse_2_id]
         .filter((id): id is string => Boolean(id))
-        .map((parentId) => ({
-          parent_id: parentId,
-          child_id: selectedChildId,
-          relationship_type: 'parent',
-        }));
+        .map((parentId) => ({ parent_id: parentId, child_id: selectedChildId, relationship_type: 'parent' }));
 
-      if (parentRows.length === 0) {
-        setRelationshipError(
-          'This marriage has no valid spouse members.'
-        );
-        return;
-      }
+      if (parentRows.length === 0) { setRelationshipError('This marriage has no valid spouse members.'); return; }
 
-      const spouseIds = parentRows.map(
-        (row) => row.parent_id
-      );
-
+      const spouseIds = parentRows.map((row) => row.parent_id);
       const { error: deleteError } = await supabase
         .from('parent_child_relationships')
         .delete()
         .eq('child_id', selectedChildId)
         .in('parent_id', spouseIds);
 
-      if (deleteError) {
-        console.error(
-          'Error clearing existing parent links:',
-          deleteError
-        );
-        setRelationshipError(
-          deleteError.message ||
-            'Unable to update parent relationship.'
-        );
-        return;
-      }
+      if (deleteError) { console.error('Error clearing existing parent links:', deleteError); setRelationshipError(deleteError.message || 'Unable to update parent relationship.'); return; }
 
-      const { error: insertError } = await supabase
-        .from('parent_child_relationships')
-        .insert(parentRows);
+      const { error: insertError } = await supabase.from('parent_child_relationships').insert(parentRows);
+      if (insertError) { console.error('Error assigning child:', insertError); setRelationshipError(insertError.message || 'Unable to assign child.'); return; }
 
-      if (insertError) {
-        console.error(
-          'Error assigning child:',
-          insertError
-        );
-        setRelationshipError(
-          insertError.message || 'Unable to assign child.'
-        );
-        return;
-      }
-
-      const { error: memberUpdateError } = await supabase
-        .from('members')
-        .update({ marriage_id: selectedMarriageId })
-        .eq('id', selectedChildId);
-
-      if (memberUpdateError) {
-        console.warn(
-          'Marriage assignment saved, but marriage_id could not be synchronized:',
-          memberUpdateError
-        );
-      }
+      const { error: memberUpdateError } = await supabase.from('members').update({ marriage_id: selectedMarriageId }).eq('id', selectedChildId);
+      if (memberUpdateError) console.warn('Marriage assignment saved, but marriage_id could not be synchronized:', memberUpdateError);
 
       setSelectedChildId('');
-
-      await Promise.all([
-        fetchMembers(),
-        fetchParentChildRelationships(),
-      ]);
+      await Promise.all([fetchMembers(), fetchParentChildRelationships()]);
     } catch (error) {
-      console.error(
-        'Unexpected relationship error:',
-        error
-      );
-      setRelationshipError(
-        'Something went wrong. Please try again.'
-      );
+      console.error('Unexpected relationship error:', error);
+      setRelationshipError('Something went wrong. Please try again.');
     } finally {
       setSavingRelationship(false);
     }
   };
 
   const allEvents = [...dbEvents, ...familyEvents];
-  const allAnnouncements = [
-    ...dbAnnouncements,
-    ...fallbackAnnouncements,
-  ];
+  const allAnnouncements = [...dbAnnouncements, ...fallbackAnnouncements];
   const allMembers = [...dbMembers];
 
   const getParentsOfChild = (childId: string) =>
     parentChildRelationships
-      .filter(
-        (relationship) =>
-          relationship.child_id === childId
-      )
-      .map((relationship) => ({
-        ...relationship,
-        parent: allMembers.find(
-          (member) =>
-            member.id === relationship.parent_id
-        ),
-      }))
-      .filter((relationship) =>
-        Boolean(relationship.parent)
-      );
+      .filter((relationship) => relationship.child_id === childId)
+      .map((relationship) => ({ ...relationship, parent: allMembers.find((member) => member.id === relationship.parent_id) }))
+      .filter((relationship) => Boolean(relationship.parent));
 
+  // Used in the Relationships tab to show each parent's children, independent of marriage grouping
   const getChildrenOfParent = (parentId: string) =>
     parentChildRelationships
-      .filter(
-        (relationship) =>
-          relationship.parent_id === parentId
-      )
-      .map((relationship) =>
-        allMembers.find(
-          (member) =>
-            member.id === relationship.child_id
-        )
-      )
-      .filter(
-        (member): member is DbMember =>
-          Boolean(member)
-      );
+      .filter((relationship) => relationship.parent_id === parentId)
+      .map((relationship) => allMembers.find((member) => member.id === relationship.child_id))
+      .filter((member): member is DbMember => Boolean(member));
 
   const getMemberName = (id: string | null) =>
-    dbMembers.find(
-      (member) => member.id === id
-    )?.name || 'Unknown member';
+    dbMembers.find((member) => member.id === id)?.name || 'Unknown member';
 
   const getMarriageChildren = (marriageId: string) => {
-    const marriage = marriages.find(
-      (item) => item.id === marriageId
-    );
-
+    const marriage = marriages.find((item) => item.id === marriageId);
     if (!marriage) return [];
-
-    const parentIds = [
-      marriage.spouse_1_id,
-      marriage.spouse_2_id,
-    ].filter((id): id is string => Boolean(id));
-
+    const parentIds = [marriage.spouse_1_id, marriage.spouse_2_id].filter((id): id is string => Boolean(id));
     const childIds = parentChildRelationships
-      .filter((relationship) =>
-        parentIds.includes(
-          relationship.parent_id
-        )
-      )
-      .map(
-        (relationship) =>
-          relationship.child_id
-      );
-
-    return allMembers.filter((member) =>
-      childIds.includes(member.id)
-    );
+      .filter((relationship) => parentIds.includes(relationship.parent_id))
+      .map((relationship) => relationship.child_id);
+    return allMembers.filter((member) => childIds.includes(member.id));
   };
 
-  /*
-   * ==========================================================
-   * FAMILY TREE
-   * ==========================================================
-   *
-   * Structure:
-   *
-   *                    PERSON
-   *                       |
-   *               ------- HEART -------
-   *               |                   |
-   *           SPOUSE 1             SPOUSE 2
-   *               |                   |
-   *           CHILDREN             CHILDREN
-   *
-   * A person can have multiple marriages.
-   * Each marriage remains its own group.
-   */
+  type TreeNode = {
+  member: DbMember;
+  marriages: MarriageGroup[];
+};
 
-  const buildTree = (): TreeNode[] => {
+type MarriageGroup = {
+  id: string;
+  spouse1: DbMember;
+  spouse2: DbMember;
+  children: TreeNode[];
+};
+
+const buildTree = (): TreeNode[] => {
+    /*
+     * FAMILY TREE RULE:
+     *
+     * There must be ONE main tree only.
+     *
+     * Parent/child relationships determine the vertical family line.
+     * Marriage relationships determine the spouse branches.
+     * A spouse is never treated as a second root.
+     */
     const memberMap = new Map(
-      dbMembers.map((member) => [
-        member.id,
-        member,
-      ])
+      dbMembers.map((member) => [member.id, member])
     );
 
-    /*
-     * Get children belonging to one specific marriage.
-     *
-     * We support both:
-     *
-     * 1. members.marriage_id
-     * 2. parent_child_relationships where BOTH spouses
-     *    are recorded as parents.
-     */
-    const getChildrenForMarriage = (
-      marriage: Marriage
-    ): DbMember[] => {
+    /* --------------------------------------------------------------
+     * Get the children belonging to one specific marriage.
+     * -------------------------------------------------------------- */
+    const getChildrenForMarriage = (marriage: Marriage): DbMember[] => {
       const spouseIds = [
         marriage.spouse_1_id,
         marriage.spouse_2_id,
-      ].filter(
-        (id): id is string => Boolean(id)
-      );
+      ].filter((id): id is string => Boolean(id));
 
       if (spouseIds.length === 0) {
         return [];
       }
 
-      const explicitlyAssigned =
-        dbMembers.filter(
-          (member) =>
-            member.marriageId === marriage.id
-        );
-
-      const parentRelationships =
-        parentChildRelationships.filter(
-          (relationship) =>
-            spouseIds.includes(
-              relationship.parent_id
-            )
-        );
-
-      const possibleChildIds = new Set(
-        parentRelationships.map(
-          (relationship) =>
-            relationship.child_id
-        )
+      /* Children explicitly assigned through members.marriage_id. */
+      const explicitlyAssigned = dbMembers.filter(
+        (member) => member.marriageId === marriage.id
       );
 
-      const childrenFromBothParents =
-        dbMembers.filter((member) => {
-          if (!possibleChildIds.has(member.id)) {
-            return false;
-          }
+      /* Children linked through parent-child relationships. */
+      const possibleChildIds = new Set(
+        parentChildRelationships
+          .filter((relationship) =>
+            spouseIds.includes(relationship.parent_id)
+          )
+          .map((relationship) => relationship.child_id)
+      );
 
-          const parentIds = new Set(
-            parentChildRelationships
-              .filter(
-                (relationship) =>
-                  relationship.child_id ===
-                  member.id
-              )
-              .map(
-                (relationship) =>
-                  relationship.parent_id
-              )
-          );
+      /* Prefer children who are linked to BOTH spouses. */
+      const childrenFromBothParents = dbMembers.filter((member) => {
+        if (!possibleChildIds.has(member.id)) {
+          return false;
+        }
 
-          return spouseIds.every(
-            (spouseId) =>
-              parentIds.has(spouseId)
-          );
-        });
+        const parentIds = new Set(
+          parentChildRelationships
+            .filter(
+              (relationship) => relationship.child_id === member.id
+            )
+            .map((relationship) => relationship.parent_id)
+        );
+
+        return spouseIds.every((spouseId) => parentIds.has(spouseId));
+      });
+
+      /*
+       * If only one spouse is recorded as a parent, still include the
+       * child. This keeps existing family records visible.
+       */
+      const childrenFromEitherParent = dbMembers.filter((member) =>
+        possibleChildIds.has(member.id)
+      );
 
       const children = [
         ...explicitlyAssigned,
         ...childrenFromBothParents,
+        ...childrenFromEitherParent,
       ];
 
       return Array.from(
-        new Map(
-          children.map((child) => [
-            child.id,
-            child,
-          ])
-        ).values()
+        new Map(children.map((child) => [child.id, child])).values()
       );
     };
 
-    /*
-     * Recursively build one member and their marriages.
+    /* --------------------------------------------------------------
+     * Recursively build descendants.
      *
      * IMPORTANT:
-     * We do not use a global alreadyPlaced set.
+     * The ancestor set prevents circular parent/child data from
+     * sending the tree back into an ancestor.
      *
-     * This is necessary because someone can legitimately
-     * have more than one marriage.
-     */
+     * Spouses are NOT recursively built here. They are rendered only
+     * as the spouse of the current marriage. Their own children enter
+     * the tree only through their marriage groups.
+     * -------------------------------------------------------------- */
     const buildNode = (
       member: DbMember,
       ancestorIds: Set<string> = new Set()
     ): TreeNode => {
-      /*
-       * Prevent circular relationship data from creating
-       * infinite recursion.
-       */
       if (ancestorIds.has(member.id)) {
         return {
           member,
@@ -803,76 +364,50 @@ export default function PortalPage() {
         };
       }
 
-      const nextAncestorIds = new Set(
-        ancestorIds
-      );
-
+      const nextAncestorIds = new Set(ancestorIds);
       nextAncestorIds.add(member.id);
 
-      const memberMarriages =
-        marriages.filter(
-          (marriage) =>
-            marriage.spouse_1_id ===
-              member.id ||
-            marriage.spouse_2_id ===
-              member.id
+      const memberMarriages = marriages.filter(
+        (marriage) =>
+          marriage.spouse_1_id === member.id ||
+          marriage.spouse_2_id === member.id
+      );
+
+      const marriageGroups: MarriageGroup[] = memberMarriages
+        .map((marriage) => {
+          const spouseId =
+            marriage.spouse_1_id === member.id
+              ? marriage.spouse_2_id
+              : marriage.spouse_1_id;
+
+          if (!spouseId || spouseId === member.id) {
+            return null;
+          }
+
+          const spouse = memberMap.get(spouseId);
+
+          if (!spouse) {
+            return null;
+          }
+
+          const marriageChildren = getChildrenForMarriage(marriage);
+
+          const children = marriageChildren
+            .filter((child) => child.id !== member.id)
+            .filter((child) => child.id !== spouse.id)
+            .filter((child) => !nextAncestorIds.has(child.id))
+            .map((child) => buildNode(child, nextAncestorIds));
+
+          return {
+            id: marriage.id,
+            spouse1: member,
+            spouse2: spouse,
+            children,
+          };
+        })
+        .filter(
+          (marriage): marriage is MarriageGroup => marriage !== null
         );
-
-      const marriageGroups: MarriageGroup[] =
-        memberMarriages
-          .map((marriage) => {
-            const spouseId =
-              marriage.spouse_1_id ===
-              member.id
-                ? marriage.spouse_2_id
-                : marriage.spouse_1_id;
-
-            if (!spouseId) {
-              return null;
-            }
-
-            const spouse =
-              memberMap.get(spouseId);
-
-            if (!spouse) {
-              return null;
-            }
-
-            const marriageChildren =
-              getChildrenForMarriage(
-                marriage
-              );
-
-            const children =
-              marriageChildren
-                .filter(
-                  (child) =>
-                    child.id !== member.id
-                )
-                .filter(
-                  (child) =>
-                    child.id !== spouse.id
-                )
-                .map((child) =>
-                  buildNode(
-                    child,
-                    nextAncestorIds
-                  )
-                );
-
-            return {
-              id: marriage.id,
-              spouse1: member,
-              spouse2: spouse,
-              children,
-            };
-          })
-          .filter(
-            (
-              marriage
-            ): marriage is MarriageGroup =>
-              marriage !== null
-          );
 
       return {
         member,
@@ -880,2017 +415,552 @@ export default function PortalPage() {
       };
     };
 
-    /*
-     * ==========================================================
-     * FIND THE TRUE FAMILY ROOT
-     * ==========================================================
-     *
-     * A person who is simply the spouse of another root
-     * should NOT become another independent tree.
-     *
-     * Example:
-     *
-     *        DAUGHTER
-     *           |
-     *       ❤️--+--❤️
-     *       |       |
-     *   HUSBAND 1 HUSBAND 2
-     *
-     * The daughter must be the root, not the husbands.
-     */
-
+    /* --------------------------------------------------------------
+     * FIND POSSIBLE FAMILY ROOTS
+     * -------------------------------------------------------------- */
     const childIds = new Set(
       parentChildRelationships.map(
-        (relationship) =>
-          relationship.child_id
+        (relationship) => relationship.child_id
       )
     );
 
-    /*
-     * First identify members who are not recorded
-     * as somebody else's children.
-     */
-    const possibleRoots =
-      dbMembers.filter(
-        (member) =>
-          !childIds.has(member.id)
-      );
+    const possibleRoots = dbMembers.filter(
+      (member) => !childIds.has(member.id)
+    );
 
-    /*
-     * Find root members who are spouses of another
-     * possible root.
-     *
-     * If A and B are both possible roots and A is
-     * married to B, only one should be the root.
-     */
-    const rootSpouseIds =
-      new Set<string>();
-
-    possibleRoots.forEach((root) => {
-      marriages.forEach((marriage) => {
-        let spouseId: string | null =
-          null;
-
-        if (
-          marriage.spouse_1_id ===
-          root.id
-        ) {
-          spouseId =
-            marriage.spouse_2_id;
-        } else if (
-          marriage.spouse_2_id ===
-          root.id
-        ) {
-          spouseId =
-            marriage.spouse_1_id;
-        }
-
-        if (
-          spouseId &&
-          possibleRoots.some(
-            (candidate) =>
-              candidate.id ===
-              spouseId
-          )
-        ) {
-          /*
-           * Only remove the spouse when the spouse
-           * is also another possible root.
-           *
-           * We keep the first root and prevent its
-           * spouse from creating a duplicate tree.
-           */
-          rootSpouseIds.add(
-            spouseId
-          );
-        }
-      });
-    });
-
-    /*
-     * Remove duplicate spouse roots.
-     */
-    let rootMembers =
-      possibleRoots.filter(
-        (member) =>
-          !rootSpouseIds.has(
-            member.id
-          )
-      );
-
-    /*
-     * If several unrelated true roots genuinely exist,
-     * keep them all.
-     *
-     * However, if root selection produced multiple
-     * spouse-related roots, use one root.
-     */
-    if (rootMembers.length > 1) {
-      const connectedRootIds =
-        new Set<string>();
-
-      rootMembers.forEach((root) => {
-        marriages.forEach(
-          (marriage) => {
-            const involvesRoot =
-              marriage.spouse_1_id ===
-                root.id ||
-              marriage.spouse_2_id ===
-                root.id;
-
-            if (!involvesRoot) {
-              return;
-            }
-
-            const spouseId =
-              marriage.spouse_1_id ===
-              root.id
-                ? marriage.spouse_2_id
-                : marriage.spouse_1_id;
-
-            if (
-              spouseId &&
-              rootMembers.some(
-                (candidate) =>
-                  candidate.id ===
-                  spouseId
-              )
-            ) {
-              connectedRootIds.add(
-                root.id
-              );
-              connectedRootIds.add(
-                spouseId
-              );
-            }
-          }
-        );
-      });
-
-      /*
-       * If all the roots are connected through marriages,
-       * use the first root only.
-       *
-       * This prevents duplicate complete trees.
-       */
-      if (
-        connectedRootIds.size ===
-          rootMembers.length &&
-        rootMembers.length > 1
-      ) {
-        rootMembers = [
-          rootMembers[0],
-        ];
-      }
+    if (possibleRoots.length === 0) {
+      return dbMembers.length > 0
+        ? [buildNode(dbMembers[0])]
+        : [];
     }
 
-    /*
-     * Final fallback.
-     *
-     * This ensures the tree still displays even when
-     * relationship records are incomplete.
-     */
-    const finalRoots =
-      rootMembers.length > 0
-        ? rootMembers
-        : possibleRoots.length > 0
-        ? [possibleRoots[0]]
-        : dbMembers.length > 0
-        ? [dbMembers[0]]
-        : [];
-
-    /*
-     * IMPORTANT:
-     * buildTree() ends here.
-     *
-     * The useEffect below MUST remain outside this
-     * function.
-     */
-    return finalRoots.map((root) =>
-      buildNode(root)
+    /* --------------------------------------------------------------
+     * FIND THE OLDEST GENERATION.
+     * -------------------------------------------------------------- */
+    const oldestGeneration = Math.min(
+      ...possibleRoots.map(
+        (member) => Number(member.generation) || 1
+      )
     );
+
+    const oldestRoots = possibleRoots.filter(
+      (member) =>
+        (Number(member.generation) || 1) === oldestGeneration
+    );
+
+    /* --------------------------------------------------------------
+     * IF TWO ROOTS ARE MARRIED TO EACH OTHER, use ONE of them as
+     * the root. FamilyTreeNode will render the spouse beside them.
+     * -------------------------------------------------------------- */
+    const rootMarriage = marriages.find(
+      (marriage) =>
+        marriage.spouse_1_id &&
+        marriage.spouse_2_id &&
+        oldestRoots.some(
+          (root) => root.id === marriage.spouse_1_id
+        ) &&
+        oldestRoots.some(
+          (root) => root.id === marriage.spouse_2_id
+        )
+    );
+
+    const mainRoot = rootMarriage?.spouse_1_id
+      ? memberMap.get(rootMarriage.spouse_1_id)
+      : oldestRoots[0];
+
+    /* --------------------------------------------------------------
+     * ABSOLUTE RULE: ONE MAIN TREE ONLY.
+     * -------------------------------------------------------------- */
+    return mainRoot ? [buildNode(mainRoot)] : [];
   };
 
-  /*
-   * ==========================================================
-   * LOAD PORTAL DATA
-   * ==========================================================
-   */
   useEffect(() => {
-    if (!isPortalAuthenticated) {
-      return;
-    }
-
+    if (!isAuthenticated) return;
     fetchEvents();
     fetchAnnouncements();
     fetchMembers();
     fetchMarriages();
     fetchParentChildRelationships();
-    fetchDocuments();
-  }, [isPortalAuthenticated]);
+  }, [isAuthenticated]);
 
-  /*
-   * ==========================================================
-   * EVENT IMAGE
-   * ==========================================================
-   */
-  const handleEventImageChange = (
-    e: ChangeEvent<HTMLInputElement>
-  ) => {
-    const selectedFile =
-      e.target.files?.[0];
-
+  const handleEventImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
-
     setEventImageFile(selectedFile);
-    setEventImagePreview(
-      URL.createObjectURL(selectedFile)
-    );
+    setEventImagePreview(URL.createObjectURL(selectedFile));
   };
 
-  /*
-   * ==========================================================
-   * DOCUMENTS
-   * ==========================================================
-   */
-
-  const handleDocumentFileChange = (
-    e: ChangeEvent<HTMLInputElement>
-  ) => {
-    const selectedFile =
-      e.target.files?.[0];
-
+  const handleMemberImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
-
-    setDocumentError('');
-
-    const maxSize =
-      10 * 1024 * 1024;
-
-    if (selectedFile.size > maxSize) {
-      setDocumentError(
-        'The document is too large. Maximum file size is 10 MB.'
-      );
-      return;
-    }
-
-    setDocumentFile(selectedFile);
-
-    if (!documentTitle.trim()) {
-      const fileNameWithoutExtension =
-        selectedFile.name.replace(
-          /\.[^/.]+$/,
-          ''
-        );
-
-      setDocumentTitle(
-        fileNameWithoutExtension
-      );
-    }
-  };
-
-  const resetDocumentForm = () => {
-    setDocumentTitle('');
-    setDocumentCategory(
-      'Family Records'
-    );
-    setDocumentFile(null);
-    setDocumentError('');
-  };
-
-  const openDocument = async (
-    document: DbDocument
-  ) => {
-    setDocumentError('');
-
-    try {
-      const { data, error } =
-        await supabase.storage
-          .from('family-documents')
-          .createSignedUrl(
-            document.file_path,
-            60 * 10
-          );
-
-      if (
-        error ||
-        !data?.signedUrl
-      ) {
-        console.error(
-          'Document access error:',
-          error
-        );
-
-        setDocumentError(
-          'Unable to open this document. Please try again.'
-        );
-
-        return;
-      }
-
-      window.open(
-        data.signedUrl,
-        '_blank',
-        'noopener,noreferrer'
-      );
-    } catch (error) {
-      console.error(
-        'Unexpected document access error:',
-        error
-      );
-
-      setDocumentError(
-        'Unable to open this document.'
-      );
-    }
-  };
-
-  const deleteDocument = async (
-    document: DbDocument
-  ) => {
-    if (!isAdmin) {
-      setDocumentError(
-        'Only family administrators can delete documents.'
-      );
-      return;
-    }
-
-    const confirmed =
-      window.confirm(
-        `Are you sure you want to delete "${document.title}"? This cannot be undone.`
-      );
-
-    if (!confirmed) return;
-
-    setDocumentError('');
-
-    try {
-      const { error: storageError } =
-        await supabase.storage
-          .from('family-documents')
-          .remove([
-            document.file_path,
-          ]);
-
-      if (storageError) {
-        console.error(
-          'Document storage delete error:',
-          storageError
-        );
-
-        setDocumentError(
-          storageError.message ||
-            'Unable to delete the document file.'
-        );
-
-        return;
-      }
-
-      const {
-        error: databaseError,
-      } = await supabase
-        .from('documents')
-        .delete()
-        .eq('id', document.id);
-
-      if (databaseError) {
-        console.error(
-          'Document database delete error:',
-          databaseError
-        );
-
-        setDocumentError(
-          databaseError.message ||
-            'Unable to delete the document record.'
-        );
-
-        return;
-      }
-
-      await fetchDocuments();
-    } catch (error) {
-      console.error(
-        'Unexpected document delete error:',
-        error
-      );
-
-      setDocumentError(
-        'Something went wrong while deleting the document.'
-      );
-    }
-  };
-
-  const uploadDocument = async () => {
-    setDocumentError('');
-
-    if (!currentUser) {
-      setDocumentError(
-        'You must be signed in to upload a document.'
-      );
-      return;
-    }
-
-    if (!documentTitle.trim()) {
-      setDocumentError(
-        'Please enter a document title.'
-      );
-      return;
-    }
-
-    if (!documentFile) {
-      setDocumentError(
-        'Please select a document to upload.'
-      );
-      return;
-    }
-
-    try {
-      setUploadingDocument(true);
-
-      const safeFileName =
-        documentFile.name
-          .replace(
-            /[^a-zA-Z0-9._-]/g,
-            '_'
-          )
-          .replace(
-            /_+/g,
-            '_'
-          );
-
-      const filePath =
-        `documents/${currentUser.id}/${crypto.randomUUID()}-${safeFileName}`;
-
-      const {
-        error: uploadError,
-      } = await supabase.storage
-        .from('family-documents')
-        .upload(
-          filePath,
-          documentFile,
-          {
-            cacheControl: '3600',
-            upsert: false,
-          }
-        );
-
-      if (uploadError) {
-        console.error(
-          'Document upload error:',
-          uploadError
-        );
-
-        setDocumentError(
-          uploadError.message ||
-            'Document upload failed.'
-        );
-
-        return;
-      }
-
-      const {
-        error: insertError,
-      } = await supabase
-        .from('documents')
-        .insert({
-          title:
-            documentTitle.trim(),
-          category:
-            documentCategory,
-          file_name:
-            documentFile.name,
-          file_path:
-            filePath,
-          uploaded_by:
-            currentUser.id,
-        });
-
-      if (insertError) {
-        console.error(
-          'Document record error:',
-          insertError
-        );
-
-        await supabase.storage
-          .from('family-documents')
-          .remove([
-            filePath,
-          ]);
-
-        setDocumentError(
-          insertError.message ||
-            'Unable to save document information.'
-        );
-
-        return;
-      }
-
-      resetDocumentForm();
-
-      await fetchDocuments();
-    } catch (error) {
-      console.error(
-        'Unexpected document upload error:',
-        error
-      );
-
-      setDocumentError(
-        'Something went wrong while uploading the document.'
-      );
-    } finally {
-      setUploadingDocument(false);
-    }
-  };
-
-  /*
-   * ==========================================================
-   * MEMBER IMAGE
-   * ==========================================================
-   */
-  const handleMemberImageChange = (
-    e: ChangeEvent<HTMLInputElement>
-  ) => {
-    const selectedFile =
-      e.target.files?.[0];
-
-    if (!selectedFile) return;
-
     setMemberImageFile(selectedFile);
-    setMemberImagePreview(
-      URL.createObjectURL(selectedFile)
-    );
+    setMemberImagePreview(URL.createObjectURL(selectedFile));
   };
-
-  /*
-   * ==========================================================
-   * FORM RESETS
-   * ==========================================================
-   */
 
   const resetEventForm = () => {
-    setEventTitle('');
-    setEventDate('');
-    setEventLocation('');
-    setEventDescription('');
-    setEventType('celebration');
+    setEventTitle(''); setEventDate(''); setEventLocation(''); setEventDescription(''); setEventType('celebration');
     setEventImageFile(null);
-
-    if (eventImagePreview) {
-      URL.revokeObjectURL(
-        eventImagePreview
-      );
-    }
-
+    if (eventImagePreview) URL.revokeObjectURL(eventImagePreview);
     setEventImagePreview(null);
     setEventFormError('');
   };
 
   const resetAnnouncementForm = () => {
-    setAnnTitle('');
-    setAnnPriority('medium');
-    setAnnFormError('');
+    setAnnTitle(''); setAnnPriority('medium'); setAnnFormError('');
   };
 
   const resetMemberForm = () => {
-    setMemberName('');
-    setMemberRole('');
-    setMemberBio('');
-    setMemberGeneration('1');
-    setMemberBirthDate('');
-    setMemberDateOfPassing('');
-    setMemberLocation('');
-    setMemberOccupation('');
-    setMemberTags('');
-    setMemberSpouseId('');
-    setMemberFatherId('');
-    setMemberMotherId('');
+    setMemberName(''); setMemberRole(''); setMemberBio(''); setMemberGeneration('1');
+    setMemberBirthDate(''); setMemberDateOfPassing('');
+    setMemberLocation(''); setMemberOccupation(''); setMemberTags('');
+    setMemberSpouseId(''); setMemberFatherId(''); setMemberMotherId('');
     setMemberImageFile(null);
-
-    if (memberImagePreview) {
-      URL.revokeObjectURL(
-        memberImagePreview
-      );
-    }
-
+    if (memberImagePreview) URL.revokeObjectURL(memberImagePreview);
     setMemberImagePreview(null);
     setMemberFormError('');
   };
 
-  /*
-   * ==========================================================
-   * EVENTS
-   * ==========================================================
-   */
-
   const submitEvent = async () => {
     setEventFormError('');
-
-    if (
-      !eventTitle.trim() ||
-      !eventDate ||
-      !eventLocation.trim()
-    ) {
-      setEventFormError(
-        'Please fill in the title, date, and location.'
-      );
-      return;
-    }
-
-    if (!currentUser) {
-      setEventFormError(
-        'You must be signed in to create an event.'
-      );
-      return;
-    }
-
-    if (!isAdmin) {
-      setEventFormError(
-        'Only family administrators can create events.'
-      );
-      return;
-    }
+    if (!eventTitle.trim() || !eventDate || !eventLocation.trim()) { setEventFormError('Please fill in the title, date, and location.'); return; }
+    if (!currentUser) { setEventFormError('You must be signed in to create an event.'); return; }
+    if (!isAdmin) { setEventFormError('Only family administrators can create events.'); return; }
 
     try {
       setPostingEvent(true);
-
-      let imageUrl:
-        | string
-        | null = null;
+      let imageUrl: string | null = null;
 
       if (eventImageFile) {
-        const fileExtension =
-          eventImageFile.name
-            .split('.')
-            .pop()
-            ?.toLowerCase() ||
-          'jpg';
-
-        const fileName =
-          `events/${currentUser.id}-${Date.now()}.${fileExtension}`;
-
-        const {
-          error: uploadError,
-        } = await supabase.storage
-          .from('gallery-photos')
-          .upload(
-            fileName,
-            eventImageFile,
-            {
-              cacheControl:
-                '3600',
-              upsert: false,
-            }
-          );
-
-        if (uploadError) {
-          console.error(
-            'Event image upload error:',
-            uploadError
-          );
-
-          setEventFormError(
-            'Image upload failed. Please try again.'
-          );
-
-          return;
-        }
-
-        const {
-          data: publicUrlData,
-        } = supabase.storage
-          .from('gallery-photos')
-          .getPublicUrl(
-            fileName
-          );
-
-        imageUrl =
-          publicUrlData.publicUrl;
+        const fileExtension = eventImageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const fileName = `events/${currentUser.id}-${Date.now()}.${fileExtension}`;
+        const { error: uploadError } = await supabase.storage.from('gallery-photos').upload(fileName, eventImageFile, { cacheControl: '3600', upsert: false });
+        if (uploadError) { console.error('Event image upload error:', uploadError); setEventFormError('Image upload failed. Please try again.'); return; }
+        const { data: publicUrlData } = supabase.storage.from('gallery-photos').getPublicUrl(fileName);
+        imageUrl = publicUrlData.publicUrl;
       }
 
-      const {
-        error: insertError,
-      } = await supabase
-        .from('events')
-        .insert({
-          title:
-            eventTitle.trim(),
-          date: eventDate,
-          location:
-            eventLocation.trim(),
-          description:
-            eventDescription.trim(),
-          type: eventType,
-          image: imageUrl,
-          created_by:
-            currentUser.id,
-        });
+      const { error: insertError } = await supabase.from('events').insert({
+        title: eventTitle.trim(), date: eventDate, location: eventLocation.trim(),
+        description: eventDescription.trim(), type: eventType, image: imageUrl, created_by: currentUser.id,
+      });
 
-      if (insertError) {
-        console.error(
-          'Error posting event:',
-          insertError
-        );
-
-        setEventFormError(
-          insertError.message ||
-            'Something went wrong while creating the event.'
-        );
-
-        return;
-      }
+      if (insertError) { console.error('Error posting event:', insertError); setEventFormError(insertError.message || 'Something went wrong while creating the event.'); return; }
 
       resetEventForm();
       setShowEventForm(false);
-
       await fetchEvents();
     } catch (error) {
-      console.error(
-        'Unexpected event error:',
-        error
-      );
-
-      setEventFormError(
-        'Something went wrong. Please try again.'
-      );
+      console.error('Unexpected event error:', error);
+      setEventFormError('Something went wrong. Please try again.');
     } finally {
       setPostingEvent(false);
     }
   };
 
-  /*
-   * ==========================================================
-   * ANNOUNCEMENTS
-   * ==========================================================
-   */
+  const submitAnnouncement = async () => {
+    setAnnFormError('');
+    if (!annTitle.trim()) { setAnnFormError('Please enter an announcement title.'); return; }
+    if (!currentUser) { setAnnFormError('You must be signed in.'); return; }
+    if (!isAdmin) { setAnnFormError('Only family administrators can post announcements.'); return; }
 
-  const submitAnnouncement =
-    async () => {
-      setAnnFormError('');
+    try {
+      setPostingAnn(true);
+      const { error } = await supabase.from('announcements').insert({
+        title: annTitle.trim(), author_name: currentUser.name, priority: annPriority, created_by: currentUser.id,
+      });
+      if (error) { console.error('Error posting announcement:', error); setAnnFormError(error.message || 'Something went wrong. Please try again.'); return; }
+      resetAnnouncementForm();
+      setShowAnnouncementForm(false);
+      await fetchAnnouncements();
+    } catch (error) {
+      console.error('Unexpected announcement error:', error);
+      setAnnFormError('Something went wrong. Please try again.');
+    } finally {
+      setPostingAnn(false);
+    }
+  };
 
-      if (!annTitle.trim()) {
-        setAnnFormError(
-          'Please enter an announcement title.'
-        );
-        return;
-      }
-
-      if (!currentUser) {
-        setAnnFormError(
-          'You must be signed in.'
-        );
-        return;
-      }
-
-      if (!isAdmin) {
-        setAnnFormError(
-          'Only family administrators can post announcements.'
-        );
-        return;
-      }
-
-      try {
-        setPostingAnn(true);
-
-        const { error } =
-          await supabase
-            .from('announcements')
-            .insert({
-              title:
-                annTitle.trim(),
-              author_name:
-                currentUser.name,
-              priority:
-                annPriority,
-              created_by:
-                currentUser.id,
-            });
-
-        if (error) {
-          console.error(
-            'Error posting announcement:',
-            error
-          );
-
-          setAnnFormError(
-            error.message ||
-              'Something went wrong. Please try again.'
-          );
-
-          return;
-        }
-
-        resetAnnouncementForm();
-        setShowAnnouncementForm(
-          false
-        );
-
-        await fetchAnnouncements();
-      } catch (error) {
-        console.error(
-          'Unexpected announcement error:',
-          error
-        );
-
-        setAnnFormError(
-          'Something went wrong. Please try again.'
-        );
-      } finally {
-        setPostingAnn(false);
-      }
-    };
-
-  /*
-   * ==========================================================
-   * ADD MEMBER
-   * ==========================================================
-   */
-
+  // ==========================================================
+  // SUBMIT MEMBER — now creates marriage + parent-child rows
+  // ==========================================================
   const submitMember = async () => {
     setMemberFormError('');
-
-    if (
-      !memberName.trim() ||
-      !memberRole.trim() ||
-      !memberBio.trim()
-    ) {
-      setMemberFormError(
-        'Please fill in the name, role, and bio.'
-      );
-      return;
-    }
-
-    if (!currentUser) {
-      setMemberFormError(
-        'You must be signed in.'
-      );
-      return;
-    }
-
-    if (!isAdmin) {
-      setMemberFormError(
-        'Only family administrators can add members.'
-      );
-      return;
-    }
-
-    if (
-      memberFatherId &&
-      memberFatherId === memberMotherId
-    ) {
-      setMemberFormError(
-        'Father and mother cannot be the same person.'
-      );
-      return;
-    }
+    if (!memberName.trim() || !memberRole.trim() || !memberBio.trim()) { setMemberFormError('Please fill in the name, role, and bio.'); return; }
+    if (!currentUser) { setMemberFormError('You must be signed in.'); return; }
+    if (!isAdmin) { setMemberFormError('Only family administrators can add members.'); return; }
+    if (memberFatherId && memberFatherId === memberMotherId) { setMemberFormError('Father and mother cannot be the same person.'); return; }
 
     try {
       setPostingMember(true);
-
-      let imageUrl =
-        '/images/placeholder.jpg';
+      let imageUrl = '/images/placeholder.jpg';
 
       if (memberImageFile) {
-        const fileExtension =
-          memberImageFile.name
-            .split('.')
-            .pop()
-            ?.toLowerCase() ||
-          'jpg';
-
-        const fileName =
-          `members/${currentUser.id}-${Date.now()}.${fileExtension}`;
-
-        const {
-          error: uploadError,
-        } = await supabase.storage
-          .from('gallery-photos')
-          .upload(
-            fileName,
-            memberImageFile,
-            {
-              cacheControl:
-                '3600',
-              upsert: false,
-            }
-          );
-
-        if (uploadError) {
-          console.error(
-            'Member image upload error:',
-            uploadError
-          );
-
-          setMemberFormError(
-            'Image upload failed. Please try again.'
-          );
-
-          return;
-        }
-
-        const {
-          data: publicUrlData,
-        } = supabase.storage
-          .from('gallery-photos')
-          .getPublicUrl(
-            fileName
-          );
-
-        imageUrl =
-          publicUrlData.publicUrl;
+        const fileExtension = memberImageFile.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const fileName = `members/${currentUser.id}-${Date.now()}.${fileExtension}`;
+        const { error: uploadError } = await supabase.storage.from('gallery-photos').upload(fileName, memberImageFile, { cacheControl: '3600', upsert: false });
+        if (uploadError) { console.error('Member image upload error:', uploadError); setMemberFormError('Image upload failed. Please try again.'); return; }
+        const { data: publicUrlData } = supabase.storage.from('gallery-photos').getPublicUrl(fileName);
+        imageUrl = publicUrlData.publicUrl;
       }
 
-      const tagsArray =
-        memberTags
-          .split(',')
-          .map((tag) =>
-            tag.trim()
-          )
-          .filter(Boolean);
+      const tagsArray = memberTags.split(',').map((tag) => tag.trim()).filter(Boolean);
 
-      const {
-        data: createdMemberRows,
-        error,
-      } = await supabase
+      // Insert the member and get the created row back so we can link relationships to its real id
+      const { data: createdMemberRows, error } = await supabase
         .from('members')
         .insert({
-          name:
-            memberName.trim(),
-          role:
-            memberRole.trim(),
-          bio:
-            memberBio.trim(),
-          image:
-            imageUrl,
-          generation:
-            Number(
-              memberGeneration
-            ) || 1,
-          birth_date:
-            memberBirthDate ||
-            null,
-          date_of_passing:
-            memberDateOfPassing ||
-            null,
-          location:
-            memberLocation.trim() ||
-            null,
-          occupation:
-            memberOccupation.trim() ||
-            null,
-          tags:
-            tagsArray,
-          created_by:
-            currentUser.id,
+          name: memberName.trim(),
+          role: memberRole.trim(),
+          bio: memberBio.trim(),
+          image: imageUrl,
+          generation: Number(memberGeneration) || 1,
+          birth_date: memberBirthDate || null,
+          date_of_passing: memberDateOfPassing || null,
+          location: memberLocation.trim() || null,
+          occupation: memberOccupation.trim() || null,
+          tags: tagsArray,
+          created_by: currentUser.id,
         })
         .select()
         .single();
 
-      if (error) {
-        console.error(
-          'Error adding member:',
-          error
-        );
-
-        setMemberFormError(
-          error.message ||
-            'Something went wrong. Please try again.'
-        );
-
-        return;
-      }
+      if (error) { console.error('Error adding member:', error); setMemberFormError(error.message || 'Something went wrong. Please try again.'); return; }
 
       if (!createdMemberRows) {
-        console.error(
-          'Member insert succeeded but no row was returned.'
-        );
-
-        setMemberFormError(
-          'Member was created, but relationships could not be linked. Please add them from the Relationships tab.'
-        );
-
+        console.error('Member insert succeeded but no row was returned.');
+        setMemberFormError('Member was created, but relationships could not be linked. Please add them from the Relationships tab.');
         resetMemberForm();
-        setShowMemberForm(
-          false
-        );
-
-        await Promise.all([
-          fetchMembers(),
-          fetchMarriages(),
-          fetchParentChildRelationships(),
-        ]);
-
+        setShowMemberForm(false);
+        await Promise.all([fetchMembers(), fetchMarriages(), fetchParentChildRelationships()]);
         return;
       }
 
-      const newMemberId =
-        createdMemberRows.id;
+      const newMemberId = createdMemberRows.id;
 
-      /*
-       * Create spouse relationship.
-       */
+      // Create the marriage relationship, if a spouse was selected
       if (memberSpouseId) {
-        const {
-          data: newMarriage,
-          error: marriageError,
-        } = await supabase
+        const { data: newMarriage, error: marriageError } = await supabase
           .from('marriages')
-          .insert({
-            spouse_1_id:
-              newMemberId,
-            spouse_2_id:
-              memberSpouseId,
-            status:
-              'married',
-          })
+          .insert({ spouse_1_id: newMemberId, spouse_2_id: memberSpouseId, status: 'married' })
           .select()
           .single();
 
         if (marriageError) {
-          console.error(
-            'Error creating spouse relationship:',
-            marriageError
-          );
+          console.error('Error creating spouse relationship:', marriageError);
         } else if (newMarriage) {
-          await supabase
-            .from('members')
-            .update({
-              marriage_id:
-                newMarriage.id,
-            })
-            .eq(
-              'id',
-              newMemberId
-            );
-
-          await supabase
-            .from('members')
-            .update({
-              marriage_id:
-                newMarriage.id,
-            })
-            .eq(
-              'id',
-              memberSpouseId
-            );
+          // Keep the legacy marriage_id column in sync for both spouses
+          await supabase.from('members').update({ marriage_id: newMarriage.id }).eq('id', newMemberId);
         }
       }
 
-      /*
-       * Create father relationship.
-       */
+      // Create father relationship, if selected
       if (memberFatherId) {
-        const {
-          error: fatherError,
-        } = await supabase
-          .from(
-            'parent_child_relationships'
-          )
-          .insert({
-            parent_id:
-              memberFatherId,
-            child_id:
-              newMemberId,
-            relationship_type:
-              'father',
-          });
-
-        if (fatherError) {
-          console.error(
-            'Error linking father:',
-            fatherError
-          );
-        }
+        const { error: fatherError } = await supabase
+          .from('parent_child_relationships')
+          .insert({ parent_id: memberFatherId, child_id: newMemberId, relationship_type: 'father' });
+        if (fatherError) console.error('Error linking father:', fatherError);
       }
 
-      /*
-       * Create mother relationship.
-       */
+      // Create mother relationship, if selected
       if (memberMotherId) {
-        const {
-          error: motherError,
-        } = await supabase
-          .from(
-            'parent_child_relationships'
-          )
-          .insert({
-            parent_id:
-              memberMotherId,
-            child_id:
-              newMemberId,
-            relationship_type:
-              'mother',
-          });
-
-        if (motherError) {
-          console.error(
-            'Error linking mother:',
-            motherError
-          );
-        }
+        const { error: motherError } = await supabase
+          .from('parent_child_relationships')
+          .insert({ parent_id: memberMotherId, child_id: newMemberId, relationship_type: 'mother' });
+        if (motherError) console.error('Error linking mother:', motherError);
       }
 
       resetMemberForm();
-      setShowMemberForm(
-        false
-      );
+      setShowMemberForm(false);
 
-      await Promise.all([
-        fetchMembers(),
-        fetchMarriages(),
-        fetchParentChildRelationships(),
-      ]);
+      await Promise.all([fetchMembers(), fetchMarriages(), fetchParentChildRelationships()]);
     } catch (error) {
-      console.error(
-        'Unexpected member error:',
-        error
-      );
-
-      setMemberFormError(
-        'Something went wrong. Please try again.'
-      );
+      console.error('Unexpected member error:', error);
+      setMemberFormError('Something went wrong. Please try again.');
     } finally {
       setPostingMember(false);
     }
   };
 
-  /*
-   * ==========================================================
-   * FAMILY MESSAGES
-   * ==========================================================
-   */
-
   useEffect(() => {
-    if (!isPortalAuthenticated) {
-      setMessages([]);
-      return;
-    }
-
+    if (!isAuthenticated) { setMessages([]); return; }
     let cancelled = false;
 
-    const fetchMessages =
-      async () => {
-        const {
-          data,
-          error,
-        } = await supabase
-          .from('messages')
-          .select(
-            'id, created_at, user_id, author_name, text'
-          )
-          .order(
-            'created_at',
-            {
-              ascending:
-                false,
-            }
-          );
-
-        if (cancelled) return;
-
-        if (error) {
-          console.error(
-            'Error loading messages:',
-            error
-          );
-
-          setMessageError(
-            'Unable to load family messages.'
-          );
-
-          return;
-        }
-
-        setMessages(
-          (data || []) as Message[]
-        );
-      };
+    const fetchMessages = async () => {
+      const { data, error } = await supabase.from('messages').select('id, created_at, user_id, author_name, text').order('created_at', { ascending: false });
+      if (cancelled) return;
+      if (error) { console.error('Error loading messages:', error); setMessageError('Unable to load family messages.'); return; }
+      setMessages((data || []) as Message[]);
+    };
 
     fetchMessages();
 
-    const channel =
-      supabase
-        .channel(
-          `family-messages-${Date.now()}`
-        )
-        .on(
-          'postgres_changes',
-          {
-            event: 'INSERT',
-            schema: 'public',
-            table: 'messages',
-          },
-          (payload) => {
-            const newMessage =
-              payload.new as Message;
+    const channel = supabase
+      .channel(`family-messages-${Date.now()}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        const newMessage = payload.new as Message;
+        setMessages((prev) => prev.some((m) => m.id === newMessage.id) ? prev : [newMessage, ...prev]);
+      })
+      .subscribe((status) => console.log('Messages realtime status:', status));
 
-            setMessages(
-              (prev) =>
-                prev.some(
-                  (m) =>
-                    m.id ===
-                    newMessage.id
-                )
-                  ? prev
-                  : [
-                      newMessage,
-                      ...prev,
-                    ]
-            );
-          }
-        )
-        .subscribe(
-          (status) =>
-            console.log(
-              'Messages realtime status:',
-              status
-            )
-        );
+    return () => { cancelled = true; supabase.removeChannel(channel); };
+  }, [isAuthenticated]);
 
-    return () => {
-      cancelled = true;
-      supabase.removeChannel(
-        channel
-      );
-    };
-  }, [isPortalAuthenticated]);
+  const sendMessage = async () => {
+    const trimmedMessage = message.trim();
+    if (!trimmedMessage) return;
+    if (!currentUser) { setMessageError('You must be signed in to send a message.'); return; }
 
-  const sendMessage =
-    async () => {
-      const trimmedMessage =
-        message.trim();
+    try {
+      setSendingMessage(true);
+      setMessageError('');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError) { console.error('Authentication error:', authError); setMessageError('Your session has expired. Please sign in again.'); return; }
+      if (!user) { setMessageError('No authenticated user found. Please sign in again.'); return; }
 
-      if (!trimmedMessage) {
-        return;
-      }
+      const { error } = await supabase.from('messages').insert({ user_id: user.id, author_name: currentUser.name, text: trimmedMessage });
+      if (error) { console.error('Error sending message:', error); setMessageError(error.message || 'Unable to send message.'); return; }
 
-      if (!currentUser) {
-        setMessageError(
-          'You must be signed in to send a message.'
-        );
-        return;
-      }
+      setMessage('');
+    } catch (error) {
+      console.error('Unexpected message error:', error);
+      setMessageError('Something went wrong while sending your message.');
+    } finally {
+      setSendingMessage(false);
+    }
+  };
 
-      try {
-        setSendingMessage(true);
-        setMessageError('');
-
-        const {
-          data: {
-            user,
-          },
-          error: authError,
-        } = await supabase.auth.getUser();
-
-        if (authError) {
-          console.error(
-            'Authentication error:',
-            authError
-          );
-
-          setMessageError(
-            'Your session has expired. Please sign in again.'
-          );
-
-          return;
-        }
-
-        if (!user) {
-          setMessageError(
-            'No authenticated user found. Please sign in again.'
-          );
-
-          return;
-        }
-
-        const { error } =
-          await supabase
-            .from('messages')
-            .insert({
-              user_id:
-                user.id,
-              author_name:
-                currentUser.name,
-              text:
-                trimmedMessage,
-            });
-
-        if (error) {
-          console.error(
-            'Error sending message:',
-            error
-          );
-
-          setMessageError(
-            error.message ||
-              'Unable to send message.'
-          );
-
-          return;
-        }
-
-        setMessage('');
-      } catch (error) {
-        console.error(
-          'Unexpected message error:',
-          error
-        );
-
-        setMessageError(
-          'Something went wrong while sending your message.'
-        );
-      } finally {
-        setSendingMessage(false);
-      }
-    };
-
-  /*
-   * ==========================================================
-   * AUTHENTICATION GATE
-   * ==========================================================
-   */
-
-  if (!isPortalAuthenticated) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-orange-900 flex items-center justify-center p-4 pt-24">
         <div className="text-center max-w-md">
           <div className="w-24 h-24 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-6">
-            <Lock
-              size={40}
-              className="text-orange-400"
-            />
+            <Lock size={40} className="text-orange-400" />
           </div>
-
-          <h2 className="font-montserrat text-4xl font-bold text-white mb-4">
-            Family Portal Access
-          </h2>
-
+          <h2 className="font-montserrat text-4xl font-bold text-white mb-4">Family Portal Access</h2>
           <p className="text-gray-300 text-lg mb-8 leading-relaxed">
-            The Kornu Family Portal is
-            exclusive to family members.
-            Please sign in with your family
-            credentials to continue.
+            The Kornu Family Portal is exclusive to family members. Please sign in with your family credentials to continue.
           </p>
-
           <div className="grid grid-cols-2 gap-4 mb-8 text-left">
             {[
-              {
-                icon: MessageCircle,
-                title: 'Family Chat',
-                desc: 'Private family board',
-              },
-              {
-                icon: TreePine,
-                title: 'Family Tree',
-                desc: 'Explore your heritage',
-              },
-              {
-                icon: FileText,
-                title: 'Documents',
-                desc: 'Shared family files',
-              },
-              {
-                icon: Image,
-                title: 'Private Gallery',
-                desc: 'Exclusive photos',
-              },
-            ].map(
-              ({
-                icon: Icon,
-                title,
-                desc,
-              }) => (
-                <div
-                  key={title}
-                  className="bg-white/8 backdrop-blur-sm border border-white/10 rounded-xl p-4"
-                >
-                  <Icon
-                    size={20}
-                    className="text-orange-400 mb-2"
-                  />
-
-                  <p className="text-white text-sm font-semibold">
-                    {title}
-                  </p>
-
-                  <p className="text-gray-400 text-xs">
-                    {desc}
-                  </p>
-                </div>
-              )
-            )}
+              { icon: MessageCircle, title: 'Family Chat', desc: 'Private family board' },
+              { icon: TreePine, title: 'Family Tree', desc: 'Explore your heritage' },
+              { icon: FileText, title: 'Documents', desc: 'Shared family files' },
+              { icon: Image, title: 'Private Gallery', desc: 'Exclusive photos' },
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="bg-white/8 backdrop-blur-sm border border-white/10 rounded-xl p-4">
+                <Icon size={20} className="text-orange-400 mb-2" />
+                <p className="text-white text-sm font-semibold">{title}</p>
+                <p className="text-gray-400 text-xs">{desc}</p>
+              </div>
+            ))}
           </div>
-
-          <button
-            onClick={() => {
-              setCurrentPage(
-                'signin'
-              );
-              window.scrollTo({
-                top: 0,
-              });
-            }}
-            className="btn-primary text-base px-8 py-4"
-          >
-            <Shield size={18} />
-            Sign In to Portal
-            <ArrowRight size={16} />
+          <button onClick={() => { setCurrentPage('signin'); window.scrollTo({ top: 0 }); }} className="btn-primary text-base px-8 py-4">
+            <Shield size={18} /> Sign In to Portal <ArrowRight size={16} />
           </button>
         </div>
       </div>
     );
   }
 
-  /*
-   * ==========================================================
-   * MAIN PORTAL
-   * ==========================================================
-   */
-
   return (
     <div className="min-h-screen bg-gray-50 pt-[70px]">
       <div className="bg-gradient-to-r from-gray-900 via-gray-800 to-orange-900 relative overflow-hidden">
         <div className="absolute inset-0 opacity-5">
-          <div
-            className="absolute inset-0"
-            style={{
-              backgroundImage:
-                'radial-gradient(circle at 25px 25px, white 2px, transparent 0)',
-              backgroundSize:
-                '50px 50px',
-            }}
-          />
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 25px 25px, white 2px, transparent 0)', backgroundSize: '50px 50px' }} />
         </div>
 
         <div className="relative z-10 max-w-7xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-14 h-14 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-xl font-bold shadow-lg">
-                {currentUser?.name
-                  ?.charAt(0)
-                  .toUpperCase()}
+                {currentUser?.name?.charAt(0).toUpperCase()}
               </div>
-
               <div>
                 <div className="flex items-center gap-2 mb-1">
-                  <span className="text-orange-300 text-xs font-semibold uppercase tracking-widest">
-                    Family Portal
-                  </span>
-
-                  {isAdmin && (
-                    <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">
-                      Admin
-                    </span>
-                  )}
+                  <span className="text-orange-300 text-xs font-semibold uppercase tracking-widest">Family Portal</span>
+                  {isAdmin && <span className="bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full font-semibold">Admin</span>}
                 </div>
-
-                <h1 className="font-montserrat text-2xl font-bold text-white">
-                  Welcome,{' '}
-                  {
-                    currentUser?.name?.split(
-                      ' '
-                    )[0]
-                  }
-                  !
-                </h1>
-
-                <p className="text-gray-400 text-sm">
-                  {currentUser?.email}
-                </p>
+                <h1 className="font-montserrat text-2xl font-bold text-white">Welcome, {currentUser?.name?.split(' ')[0]}!</h1>
+                <p className="text-gray-400 text-sm">{currentUser?.email}</p>
               </div>
             </div>
-
-            <button
-              onClick={logout}
-              className="hidden md:flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium transition-all"
-            >
-              <LogOut size={14} />
-              Sign Out
+            <button onClick={logout} className="hidden md:flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full text-sm font-medium transition-all">
+              <LogOut size={14} /> Sign Out
             </button>
           </div>
 
           <div className="flex gap-2 mt-6 overflow-x-auto pb-1">
             {[
-              {
-                id: 'dashboard',
-                label: 'Dashboard',
-                icon: Star,
-              },
-              {
-                id: 'messages',
-                label: 'Family Chat',
-                icon: MessageCircle,
-              },
-              {
-                id: 'members',
-                label: 'Members',
-                icon: Users,
-              },
-              {
-                id: 'relationships',
-                label: 'Relationships',
-                icon: Heart,
-              },
-              {
-                id: 'events',
-                label: 'Events',
-                icon: Calendar,
-              },
-              {
-                id: 'announcements',
-                label: 'Announcements',
-                icon: Bell,
-              },
-              {
-                id: 'tree',
-                label: 'Family Tree',
-                icon: TreePine,
-              },
-              {
-                id: 'documents',
-                label: 'Documents',
-                icon: FileText,
-              },
-              {
-                id: 'gallery',
-                label: 'Gallery',
-                icon: Image,
-              },
-              {
-                id: 'settings',
-                label: 'Settings',
-                icon: Settings,
-              },
-            ].map(
-              ({
-                id,
-                label,
-                icon: Icon,
-              }) => (
-                <button
-                  key={id}
-                  onClick={() =>
-                    setActiveTab(
-                      id
-                    )
-                  }
-                  className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
-                    activeTab === id
-                      ? 'bg-orange-500 text-white shadow-md'
-                      : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white'
-                  }`}
-                >
-                  <Icon size={14} />
-                  {label}
-                </button>
-              )
-            )}
+              { id: 'dashboard', label: 'Dashboard', icon: Star },
+              { id: 'messages', label: 'Family Chat', icon: MessageCircle },
+              { id: 'members', label: 'Members', icon: Users },
+              { id: 'relationships', label: 'Relationships', icon: Heart },
+              { id: 'events', label: 'Events', icon: Calendar },
+              { id: 'announcements', label: 'Announcements', icon: Bell },
+              { id: 'tree', label: 'Family Tree', icon: TreePine },
+            ].map(({ id, label, icon: Icon }) => (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${
+                  activeTab === id ? 'bg-orange-500 text-white shadow-md' : 'bg-white/10 text-gray-300 hover:bg-white/20 hover:text-white'
+                }`}
+              >
+                <Icon size={14} /> {label}
+              </button>
+            ))}
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-8">
 
-        {/* =====================================================
-            DASHBOARD
-        ===================================================== */}
-
         {activeTab === 'dashboard' && (
           <div className="space-y-8">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
-                {
-                  icon: Users,
-                  label: 'Family Members',
-                  value:
-                    allMembers.length,
-                  color:
-                    'text-orange-500',
-                  bg: 'bg-orange-50',
-                },
-                {
-                  icon: Calendar,
-                  label: 'Upcoming Events',
-                  value:
-                    allEvents.length,
-                  color:
-                    'text-blue-500',
-                  bg: 'bg-blue-50',
-                },
-                {
-                  icon: MessageCircle,
-                  label: 'Family Stories',
-                  value:
-                    familyStories.length,
-                  color:
-                    'text-purple-500',
-                  bg: 'bg-purple-50',
-                },
-                {
-                  icon: Heart,
-                  label: 'Countries',
-                  value: 8,
-                  color:
-                    'text-pink-500',
-                  bg: 'bg-pink-50',
-                },
-              ].map(
-                ({
-                  icon: Icon,
-                  label,
-                  value,
-                  color,
-                  bg,
-                }) => (
-                  <div
-                    key={label}
-                    className={`${bg} rounded-2xl p-5 border border-white`}
-                  >
-                    <Icon
-                      size={20}
-                      className={`${color} mb-3`}
-                    />
-
-                    <div
-                      className={`text-3xl font-black font-montserrat ${color}`}
-                    >
-                      {value}
-                    </div>
-
-                    <div className="text-gray-600 text-xs font-medium mt-1">
-                      {label}
-                    </div>
-                  </div>
-                )
-              )}
+                { icon: Users, label: 'Family Members', value: allMembers.length, color: 'text-orange-500', bg: 'bg-orange-50' },
+                { icon: Calendar, label: 'Upcoming Events', value: allEvents.length, color: 'text-blue-500', bg: 'bg-blue-50' },
+                { icon: MessageCircle, label: 'Family Stories', value: familyStories.length, color: 'text-purple-500', bg: 'bg-purple-50' },
+                { icon: Heart, label: 'Countries', value: 8, color: 'text-pink-500', bg: 'bg-pink-50' },
+              ].map(({ icon: Icon, label, value, color, bg }) => (
+                <div key={label} className={`${bg} rounded-2xl p-5 border border-white`}>
+                  <Icon size={20} className={`${color} mb-3`} />
+                  <div className={`text-3xl font-black font-montserrat ${color}`}>{value}</div>
+                  <div className="text-gray-600 text-xs font-medium mt-1">{label}</div>
+                </div>
+              ))}
             </div>
 
             <div>
-              <h2 className="font-montserrat text-xl font-bold text-gray-900 mb-4">
-                Portal Features
-              </h2>
-
+              <h2 className="font-montserrat text-xl font-bold text-gray-900 mb-4">Portal Features</h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {portalFeatures.map(
-                  ({
-                    id,
-                    icon: Icon,
-                    title,
-                    desc,
-                    color,
-                    count,
-                  }) => (
-                    <button
-                      key={id}
-                      onClick={() =>
-                        setActiveTab(
-                          id ===
-                            'docs'
-                            ? 'documents'
-                            : id
-                        )
-                      }
-                      className="portal-card p-6 text-left group"
-                    >
-                      <div
-                        className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-md`}
-                      >
-                        <Icon
-                          size={22}
-                          className="text-white"
-                        />
-                      </div>
-
-                      <h3 className="font-bold text-gray-900 text-base mb-1">
-                        {title}
-                      </h3>
-
-                      <p className="text-gray-500 text-xs mb-3">
-                        {desc}
-                      </p>
-
-                      {count && (
-                        <span className="text-xs font-semibold bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full">
-                          {count}
-                        </span>
-                      )}
-                    </button>
-                  )
-                )}
+                {portalFeatures.map(({ id, icon: Icon, title, desc, color, count }) => (
+                  <button
+                    key={id}
+                    onClick={() => {
+                      if (id === 'messages') setActiveTab('messages');
+                      if (id === 'members') setActiveTab('members');
+                      if (id === 'events') setActiveTab('events');
+                      if (id === 'settings') setActiveTab('settings');
+                      if (id === 'tree') setActiveTab('tree');
+                    }}
+                    className="portal-card p-6 text-left group"
+                  >
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-md`}>
+                      <Icon size={22} className="text-white" />
+                    </div>
+                    <h3 className="font-bold text-gray-900 text-base mb-1">{title}</h3>
+                    <p className="text-gray-500 text-xs mb-3">{desc}</p>
+                    {count && <span className="text-xs font-semibold bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full">{count}</span>}
+                  </button>
+                ))}
               </div>
             </div>
 
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
               <h2 className="font-montserrat text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                <Bell
-                  size={18}
-                  className="text-orange-500"
-                />
-                Latest Announcements
+                <Bell size={18} className="text-orange-500" /> Latest Announcements
               </h2>
-
               <div className="space-y-3">
-                {allAnnouncements.map(
-                  (a) => (
-                    <div
-                      key={a.id}
-                      className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100"
-                    >
-                      <div
-                        className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${
-                          a.priority ===
-                          'high'
-                            ? 'bg-orange-500'
-                            : 'bg-blue-400'
-                        }`}
-                      />
-
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 text-sm">
-                          {a.title}
-                        </p>
-
-                        <p className="text-gray-400 text-xs mt-0.5">
-                          By {a.author} ·{' '}
-                          {new Date(
-                            a.date
-                          ).toLocaleDateString(
-                            'en-GB',
-                            {
-                              day: 'numeric',
-                              month: 'short',
-                              year: 'numeric',
-                            }
-                          )}
-                        </p>
-                      </div>
-
-                      {a.priority ===
-                        'high' && (
-                        <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-semibold">
-                          Important
-                        </span>
-                      )}
+                {allAnnouncements.map((a) => (
+                  <div key={a.id} className="flex items-start gap-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
+                    <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${a.priority === 'high' ? 'bg-orange-500' : 'bg-blue-400'}`} />
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-900 text-sm">{a.title}</p>
+                      <p className="text-gray-400 text-xs mt-0.5">
+                        By {a.author} · {new Date(a.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </p>
                     </div>
-                  )
-                )}
+                    {a.priority === 'high' && <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-semibold">Important</span>}
+                  </div>
+                ))}
               </div>
             </div>
 
             <div className="bg-gradient-to-br from-orange-500 to-pink-600 rounded-2xl p-8 text-white">
               <div className="flex items-center gap-2 mb-4">
-                <TrendingUp
-                  size={20}
-                />
-                <h3 className="font-montserrat text-xl font-bold">
-                  Family Activity
-                </h3>
+                <TrendingUp size={20} />
+                <h3 className="font-montserrat text-xl font-bold">Family Activity</h3>
               </div>
-
               <div className="grid grid-cols-12 gap-1 items-end h-20">
-                {[
-                  40, 60, 45, 80,
-                  55, 90, 70, 85,
-                  60, 95, 75, 100,
-                ].map(
-                  (
-                    height,
-                    index
-                  ) => (
-                    <div
-                      key={index}
-                      className="bg-white/30 hover:bg-white/50 rounded-sm transition-all cursor-pointer"
-                      style={{
-                        height: `${height}%`,
-                      }}
-                      title={`Month ${
-                        index + 1
-                      }`}
-                    />
-                  )
-                )}
+                {[40, 60, 45, 80, 55, 90, 70, 85, 60, 95, 75, 100].map((height, index) => (
+                  <div key={index} className="bg-white/30 hover:bg-white/50 rounded-sm transition-all cursor-pointer" style={{ height: `${height}%` }} title={`Month ${index + 1}`} />
+                ))}
               </div>
-
               <div className="flex justify-between mt-2 text-white/60 text-xs">
-                <span>Jan</span>
-                <span>Mar</span>
-                <span>May</span>
-                <span>Jul</span>
-                <span>Sep</span>
-                <span>Dec</span>
+                <span>Jan</span><span>Mar</span><span>May</span><span>Jul</span><span>Sep</span><span>Dec</span>
               </div>
-
-              <p className="text-white/70 text-sm mt-4">
-                Family engagement across
-                all portal features
-              </p>
+              <p className="text-white/70 text-sm mt-4">Family engagement across all portal features</p>
             </div>
           </div>
         )}
-
-        {/* =====================================================
-            MESSAGES
-        ===================================================== */}
 
         {activeTab === 'messages' && (
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-6 border-b border-gray-100 bg-gradient-to-r from-orange-50 to-pink-50">
               <h2 className="font-montserrat text-xl font-bold text-gray-900 flex items-center gap-2">
-                <MessageCircle
-                  size={20}
-                  className="text-orange-500"
-                />
-                Family Message Board
+                <MessageCircle size={20} className="text-orange-500" /> Family Message Board
               </h2>
-
-              <p className="text-gray-500 text-sm mt-1">
-                Private family conversations —
-                only visible to family members
-              </p>
+              <p className="text-gray-500 text-sm mt-1">Private family conversations — only visible to family members</p>
             </div>
 
             <div className="p-6 space-y-4 max-h-[500px] overflow-y-auto">
-              {messages.length ===
-              0 ? (
+              {messages.length === 0 ? (
                 <div className="text-center py-12">
-                  <MessageCircle
-                    size={40}
-                    className="mx-auto text-gray-300 mb-3"
-                  />
-
-                  <p className="text-gray-500 text-sm">
-                    No messages yet.
-                  </p>
-
-                  <p className="text-gray-400 text-xs mt-1">
-                    Be the first family
-                    member to say something!
-                  </p>
+                  <MessageCircle size={40} className="mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-500 text-sm">No messages yet.</p>
+                  <p className="text-gray-400 text-xs mt-1">Be the first family member to say something!</p>
                 </div>
               ) : (
-                messages.map(
-                  (msg) => {
-                    const isMine =
-                      msg.user_id ===
-                      currentUser?.id;
+                messages.map((msg) => {
+                  const isMine = msg.user_id === currentUser?.id;
+                  const avatar = msg.author_name ? msg.author_name.split(' ').map((n) => n.charAt(0)).join('').slice(0, 2).toUpperCase() : 'F';
+                  const messageTime = msg.created_at ? new Date(msg.created_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
 
-                    const avatar =
-                      msg.author_name
-                        ? msg.author_name
-                            .split(' ')
-                            .map(
-                              (n) =>
-                                n.charAt(
-                                  0
-                                )
-                            )
-                            .join('')
-                            .slice(
-                              0,
-                              2
-                            )
-                            .toUpperCase()
-                        : 'F';
-
-                    const messageTime =
-                      msg.created_at
-                        ? new Date(
-                            msg.created_at
-                          ).toLocaleString(
-                            'en-GB',
-                            {
-                              day: 'numeric',
-                              month: 'short',
-                              hour: '2-digit',
-                              minute:
-                                '2-digit',
-                            }
-                          )
-                        : '';
-
-                    return (
-                      <div
-                        key={
-                          msg.id
-                        }
-                        className={`flex gap-3 ${
-                          isMine
-                            ? 'flex-row-reverse'
-                            : ''
-                        }`}
-                      >
-                        <div
-                          className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold shadow-sm ${
-                            isMine
-                              ? 'bg-gradient-to-br from-orange-500 to-red-500'
-                              : 'bg-gradient-to-br from-gray-400 to-gray-600'
-                          }`}
-                        >
-                          {
-                            avatar
-                          }
+                  return (
+                    <div key={msg.id} className={`flex gap-3 ${isMine ? 'flex-row-reverse' : ''}`}>
+                      <div className={`w-9 h-9 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-bold shadow-sm ${isMine ? 'bg-gradient-to-br from-orange-500 to-red-500' : 'bg-gradient-to-br from-gray-400 to-gray-600'}`}>
+                        {avatar}
+                      </div>
+                      <div className={`max-w-[75%] ${isMine ? 'items-end' : 'items-start'} flex flex-col gap-1`}>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-gray-700">{msg.author_name}</span>
+                          <span className="text-xs text-gray-400">{messageTime}</span>
                         </div>
-
-                        <div
-                          className={`max-w-[75%] ${
-                            isMine
-                              ? 'items-end'
-                              : 'items-start'
-                          } flex flex-col gap-1`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-gray-700">
-                              {
-                                msg.author_name
-                              }
-                            </span>
-
-                            <span className="text-xs text-gray-400">
-                              {
-                                messageTime
-                              }
-                            </span>
-                          </div>
-
-                          <div
-                            className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${
-                              isMine
-                                ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-tr-sm'
-                                : 'bg-gray-100 text-gray-700 rounded-tl-sm'
-                            }`}
-                          >
-                            {
-                              msg.text
-                            }
-                          </div>
+                        <div className={`px-4 py-3 rounded-2xl text-sm leading-relaxed ${isMine ? 'bg-gradient-to-br from-orange-500 to-orange-600 text-white rounded-tr-sm' : 'bg-gray-100 text-gray-700 rounded-tl-sm'}`}>
+                          {msg.text}
                         </div>
                       </div>
-                    );
-                  }
-                )
+                    </div>
+                  );
+                })
               )}
             </div>
 
-            {messageError && (
-              <div className="mx-4 mb-3 bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
-                {messageError}
-              </div>
-            )}
+            {messageError && <div className="mx-4 mb-3 bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">{messageError}</div>}
 
             <div className="p-4 border-t border-gray-100 bg-gray-50">
               <div className="flex gap-3">
                 <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                  {currentUser?.name
-                    ?.charAt(0)
-                    .toUpperCase()}
+                  {currentUser?.name?.charAt(0).toUpperCase()}
                 </div>
-
                 <div className="flex-1 flex gap-2">
                   <input
                     type="text"
                     value={message}
-                    onChange={(e) => {
-                      setMessage(
-                        e.target.value
-                      );
-
-                      if (
-                        messageError
-                      ) {
-                        setMessageError(
-                          ''
-                        );
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (
-                        e.key ===
-                          'Enter' &&
-                        !e.shiftKey
-                      ) {
-                        e.preventDefault();
-                        sendMessage();
-                      }
-                    }}
+                    onChange={(e) => { setMessage(e.target.value); if (messageError) setMessageError(''); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); } }}
                     placeholder="Share a message with the family..."
                     className="input-field flex-1"
-                    disabled={
-                      sendingMessage
-                    }
+                    disabled={sendingMessage}
                   />
-
                   <button
-                    onClick={
-                      sendMessage
-                    }
-                    disabled={
-                      !message.trim() ||
-                      sendingMessage
-                    }
+                    onClick={sendMessage}
+                    disabled={!message.trim() || sendingMessage}
                     className="bg-gradient-to-r from-orange-500 to-orange-600 text-white px-4 py-2 rounded-xl font-medium hover:shadow-md transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    {sendingMessage
-                      ? 'Sending...'
-                      : 'Send'}
+                    {sendingMessage ? 'Sending...' : 'Send'}
                   </button>
                 </div>
               </div>
@@ -2898,193 +968,79 @@ export default function PortalPage() {
           </div>
         )}
 
-        {/* =====================================================
-            MEMBERS
-        ===================================================== */}
-
         {activeTab === 'members' && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900">
-                Family Members Directory
-              </h2>
-
+              <h2 className="font-montserrat text-xl font-bold text-gray-900">Family Members Directory</h2>
               {isAdmin && (
-                <button
-                  onClick={() => {
-                    resetMemberForm();
-                    setShowMemberForm(
-                      true
-                    );
-                  }}
-                  className="btn-primary py-2 px-4 text-sm"
-                >
-                  <Plus size={14} />
-                  Add Member
+                <button onClick={() => { resetMemberForm(); setShowMemberForm(true); }} className="btn-primary py-2 px-4 text-sm">
+                  <Plus size={14} /> Add Member
                 </button>
               )}
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {allMembers.map(
-                (member) => (
-                  <div
-                    key={
-                      member.id
-                    }
-                    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 card-hover"
-                  >
-                    <img
-                      src={
-                        member.image
-                      }
-                      alt={
-                        member.name
-                      }
-                      className="w-14 h-14 rounded-full object-cover flex-shrink-0 ring-2 ring-orange-100"
-                      onError={(
-                        e
-                      ) => {
-                        const target =
-                          e.currentTarget;
-
-                        if (
-                          target.src.includes(
-                            'placeholder.jpg'
-                          )
-                        ) {
-                          return;
-                        }
-
-                        target.src =
-                          '/images/placeholder.jpg';
-                      }}
-                    />
-
-                    <div className="flex-1 min-w-0">
-                      <h3 className="font-bold text-gray-900 font-montserrat text-sm">
-                        {
-                          member.name
-                        }
-                      </h3>
-
-                      <p className="text-orange-500 text-xs font-medium">
-                        {
-                          member.role
-                        }
-                      </p>
-
-                      <p className="text-gray-400 text-xs mt-0.5 truncate">
-                        {member.location ||
-                          'Location not specified'}{' '}
-                        ·{' '}
-                        {member.occupation ||
-                          'Occupation not specified'}
-                      </p>
-
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs">
-                        {member.birthDate && (
-                          <span className="text-gray-500">
-                            <span className="font-medium text-gray-700">
-                              Born:
-                            </span>{' '}
-                            {new Date(
-                              member.birthDate
-                            ).toLocaleDateString(
-                              'en-GB',
-                              {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
-                              }
-                            )}
-                          </span>
-                        )}
-
-                        {member.dateOfPassing && (
-                          <span className="text-gray-500">
-                            <span className="font-medium text-gray-700">
-                              Passed:
-                            </span>{' '}
-                            {new Date(
-                              member.dateOfPassing
-                            ).toLocaleDateString(
-                              'en-GB',
-                              {
-                                day: 'numeric',
-                                month: 'short',
-                                year: 'numeric',
-                              }
-                            )}
-                          </span>
-                        )}
-                      </div>
+              {allMembers.map((member) => (
+                <div key={member.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center gap-4 card-hover">
+                  <img
+                    src={member.image}
+                    alt={member.name}
+                    className="w-14 h-14 rounded-full object-cover flex-shrink-0 ring-2 ring-orange-100"
+                    onError={(e) => {
+                      const target = e.currentTarget;
+                      if (target.src.includes('placeholder.jpg')) return;
+                      target.src = '/images/placeholder.jpg';
+                    }}
+                  />
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-bold text-gray-900 font-montserrat text-sm">{member.name}</h3>
+                    <p className="text-orange-500 text-xs font-medium">{member.role}</p>
+                    <p className="text-gray-400 text-xs mt-0.5 truncate">
+                      {member.location || 'Location not specified'} · {member.occupation || 'Occupation not specified'}
+                    </p>
+                    <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2 text-xs">
+                      {member.birthDate && (
+                        <span className="text-gray-500">
+                          <span className="font-medium text-gray-700">Born:</span>{' '}
+                          {new Date(member.birthDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        </span>
+                      )}
+                      {(member as DbMember).dateOfPassing && (
+  <span className="text-gray-500">
+    <span className="font-medium text-gray-700">Passed:</span>{' '}
+    {new Date((member as DbMember).dateOfPassing as string).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+  </span>
+)}
                     </div>
-
-                    <span
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${
-                        member.generation ===
-                        1
-                          ? 'bg-orange-100 text-orange-700'
-                          : member.generation ===
-                            2
-                          ? 'bg-pink-100 text-pink-700'
-                          : member.generation ===
-                            3
-                          ? 'bg-purple-100 text-purple-700'
-                          : member.generation ===
-                            4
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : member.generation ===
-                            5
-                          ? 'bg-violet-100 text-violet-700'
-                          : 'bg-cyan-100 text-cyan-700'
-                      }`}
-                    >
-                      Gen{' '}
-                      {
-                        member.generation
-                      }
-                    </span>
                   </div>
-                )
-              )}
+                  <span
+                    className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${
+                      member.generation === 1 ? 'bg-orange-100 text-orange-700'
+                      : member.generation === 2 ? 'bg-pink-100 text-pink-700'
+                      : member.generation === 3 ? 'bg-purple-100 text-purple-700'
+                      : member.generation === 4 ? 'bg-emerald-100 text-emerald-700'
+                      : member.generation === 5 ? 'bg-violet-100 text-violet-700'
+                      : 'bg-cyan-100 text-cyan-700'
+                    }`}
+                  >
+                    Gen {member.generation}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* =====================================================
-            RELATIONSHIPS
-        ===================================================== */}
-
-        {activeTab ===
-          'relationships' && (
+        {activeTab === 'relationships' && (
           <div>
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="font-montserrat text-xl font-bold text-gray-900">
-                  Family Relationships
-                </h2>
-
-                <p className="text-gray-500 text-sm mt-1">
-                  Connect spouses and assign
-                  children to the correct
-                  family unit.
-                </p>
+                <h2 className="font-montserrat text-xl font-bold text-gray-900">Family Relationships</h2>
+                <p className="text-gray-500 text-sm mt-1">Connect spouses and assign children to the correct family unit.</p>
               </div>
-
               {isAdmin && (
-                <button
-                  onClick={() => {
-                    resetMarriageForm();
-                    setShowMarriageForm(
-                      true
-                    );
-                  }}
-                  className="btn-primary py-2 px-4 text-sm"
-                >
-                  <Plus size={14} />
-                  Add Marriage
+                <button onClick={() => { resetMarriageForm(); setShowMarriageForm(true); }} className="btn-primary py-2 px-4 text-sm">
+                  <Plus size={14} /> Add Marriage
                 </button>
               )}
             </div>
@@ -3092,362 +1048,123 @@ export default function PortalPage() {
             {isAdmin && (
               <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
                 <div className="flex items-center gap-2 mb-4">
-                  <Heart
-                    size={18}
-                    className="text-orange-500"
-                  />
-
-                  <h3 className="font-montserrat font-bold text-gray-900">
-                    Assign a Child to a
-                    Marriage
-                  </h3>
+                  <Heart size={18} className="text-orange-500" />
+                  <h3 className="font-montserrat font-bold text-gray-900">Assign a Child to a Marriage</h3>
                 </div>
 
                 <div className="grid md:grid-cols-3 gap-3">
-                  <select
-                    value={
-                      selectedMarriageId
-                    }
-                    onChange={(e) =>
-                      setSelectedMarriageId(
-                        e.target.value
-                      )
-                    }
-                    className="input-field"
-                  >
-                    <option value="">
-                      Select marriage
-                    </option>
-
-                    {marriages.map(
-                      (marriage) => (
-                        <option
-                          key={
-                            marriage.id
-                          }
-                          value={
-                            marriage.id
-                          }
-                        >
-                          {getMemberName(
-                            marriage.spouse_1_id
-                          )}{' '}
-                          &{' '}
-                          {getMemberName(
-                            marriage.spouse_2_id
-                          )}
-                        </option>
-                      )
-                    )}
+                  <select value={selectedMarriageId} onChange={(e) => setSelectedMarriageId(e.target.value)} className="input-field">
+                    <option value="">Select marriage</option>
+                    {marriages.map((marriage) => (
+                      <option key={marriage.id} value={marriage.id}>
+                        {getMemberName(marriage.spouse_1_id)} & {getMemberName(marriage.spouse_2_id)}
+                      </option>
+                    ))}
                   </select>
 
-                  <select
-                    value={
-                      selectedChildId
-                    }
-                    onChange={(e) =>
-                      setSelectedChildId(
-                        e.target.value
-                      )
-                    }
-                    className="input-field"
-                  >
-                    <option value="">
-                      Select child
-                    </option>
-
-                    {dbMembers.map(
-                      (member) => (
-                        <option
-                          key={
-                            member.id
-                          }
-                          value={
-                            member.id
-                          }
-                        >
-                          {
-                            member.name
-                          }{' '}
-                          — Gen{' '}
-                          {
-                            member.generation
-                          }
-                        </option>
-                      )
-                    )}
+                  <select value={selectedChildId} onChange={(e) => setSelectedChildId(e.target.value)} className="input-field">
+                    <option value="">Select child</option>
+                    {dbMembers.map((member) => (
+                      <option key={member.id} value={member.id}>{member.name} — Gen {member.generation}</option>
+                    ))}
                   </select>
 
-                  <button
-                    onClick={
-                      assignChildToMarriage
-                    }
-                    disabled={
-                      savingRelationship
-                    }
-                    className="btn-primary justify-center disabled:opacity-60"
-                  >
-                    {savingRelationship
-                      ? 'Saving...'
-                      : 'Assign Child'}
+                  <button onClick={assignChildToMarriage} disabled={savingRelationship} className="btn-primary justify-center disabled:opacity-60">
+                    {savingRelationship ? 'Saving...' : 'Assign Child'}
                   </button>
                 </div>
 
-                {relationshipError && (
-                  <div className="mt-3 bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
-                    {
-                      relationshipError
-                    }
-                  </div>
-                )}
+                {relationshipError && <div className="mt-3 bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">{relationshipError}</div>}
               </div>
             )}
 
             <div className="space-y-4">
-              {marriages.length ===
-              0 ? (
+              {marriages.length === 0 ? (
                 <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
-                  <Heart
-                    size={36}
-                    className="mx-auto text-gray-300 mb-3"
-                  />
-
-                  <p className="text-gray-500">
-                    No marriages or
-                    partnerships have
-                    been added yet.
-                  </p>
-
-                  {isAdmin && (
-                    <p className="text-gray-400 text-sm mt-1">
-                      Use "Add Marriage"
-                      to create the
-                      first family
-                      relationship.
-                    </p>
-                  )}
+                  <Heart size={36} className="mx-auto text-gray-300 mb-3" />
+                  <p className="text-gray-500">No marriages or partnerships have been added yet.</p>
+                  {isAdmin && <p className="text-gray-400 text-sm mt-1">Use "Add Marriage" to create the first family relationship.</p>}
                 </div>
               ) : (
-                marriages.map(
-                  (marriage) => {
-                    const children =
-                      getMarriageChildren(
-                        marriage.id
-                      );
-
-                    return (
-                      <div
-                        key={
-                          marriage.id
-                        }
-                        className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
-                      >
-                        <div className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                          <div>
-                            <div className="flex items-center gap-2 mb-2">
-                              <Heart
-                                size={17}
-                                className="text-orange-500"
-                              />
-
-                              <span className="text-xs font-semibold uppercase tracking-wider text-orange-500">
-                                {
-                                  marriage.status
-                                }
-                              </span>
-                            </div>
-
-                            <h3 className="font-montserrat text-lg font-bold text-gray-900">
-                              {getMemberName(
-                                marriage.spouse_1_id
-                              )}{' '}
-                              &{' '}
-                              {getMemberName(
-                                marriage.spouse_2_id
-                              )}
-                            </h3>
-
-                            <p className="text-gray-500 text-sm mt-1">
-                              {marriage.marriage_date
-                                ? `Married ${new Date(
-                                    marriage.marriage_date
-                                  ).toLocaleDateString(
-                                    'en-GB',
-                                    {
-                                      day: 'numeric',
-                                      month: 'long',
-                                      year: 'numeric',
-                                    }
-                                  )}`
-                                : 'Marriage date not specified'}
-                            </p>
+                marriages.map((marriage) => {
+                  const children = getMarriageChildren(marriage.id);
+                  return (
+                    <div key={marriage.id} className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+                      <div className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                        <div>
+                          <div className="flex items-center gap-2 mb-2">
+                            <Heart size={17} className="text-orange-500" />
+                            <span className="text-xs font-semibold uppercase tracking-wider text-orange-500">{marriage.status}</span>
                           </div>
-
-                          <div className="bg-orange-50 rounded-xl px-4 py-3 min-w-[150px]">
-                            <div className="text-2xl font-black text-orange-500">
-                              {
-                                children.length
-                              }
-                            </div>
-
-                            <div className="text-xs text-gray-500">
-                              Children assigned
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="border-t border-gray-100 bg-gray-50 p-5">
-                          <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">
-                            Children
+                          <h3 className="font-montserrat text-lg font-bold text-gray-900">
+                            {getMemberName(marriage.spouse_1_id)} & {getMemberName(marriage.spouse_2_id)}
+                          </h3>
+                          <p className="text-gray-500 text-sm mt-1">
+                            {marriage.marriage_date
+                              ? `Married ${new Date(marriage.marriage_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`
+                              : 'Marriage date not specified'}
                           </p>
-
-                          {children.length ===
-                          0 ? (
-                            <p className="text-sm text-gray-400">
-                              No children
-                              have been
-                              assigned to
-                              this marriage
-                              yet.
-                            </p>
-                          ) : (
-                            <div className="flex flex-wrap gap-2">
-                              {children.map(
-                                (
-                                  child
-                                ) => {
-                                  const parents =
-                                    getParentsOfChild(
-                                      child.id
-                                    );
-
-                                  return (
-                                    <div
-                                      key={
-                                        child.id
-                                      }
-                                      className="bg-white border border-gray-200 rounded-2xl px-3 py-2"
-                                    >
-                                      <div className="text-sm font-medium text-gray-700">
-                                        {
-                                          child.name
-                                        }
-                                      </div>
-
-                                      {parents.length >
-                                        0 && (
-                                        <div className="text-[11px] text-gray-400 mt-1">
-                                          Parents:{' '}
-                                          {parents
-                                            .map(
-                                              (
-                                                item
-                                              ) =>
-                                                item
-                                                  .parent
-                                                  ?.name
-                                            )
-                                            .filter(
-                                              Boolean
-                                            )
-                                            .join(
-                                              ' & '
-                                            )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                }
-                              )}
-                            </div>
-                          )}
+                        </div>
+                        <div className="bg-orange-50 rounded-xl px-4 py-3 min-w-[150px]">
+                          <div className="text-2xl font-black text-orange-500">{children.length}</div>
+                          <div className="text-xs text-gray-500">Children assigned</div>
                         </div>
                       </div>
-                    );
-                  }
-                )
+                      <div className="border-t border-gray-100 bg-gray-50 p-5">
+                        <p className="text-xs font-semibold uppercase tracking-widest text-gray-400 mb-3">Children</p>
+                        {children.length === 0 ? (
+                          <p className="text-sm text-gray-400">No children have been assigned to this marriage yet.</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {children.map((child) => {
+                              const parents = getParentsOfChild(child.id);
+                              return (
+                                <div key={child.id} className="bg-white border border-gray-200 rounded-2xl px-3 py-2">
+                                  <div className="text-sm font-medium text-gray-700">{child.name}</div>
+                                  {parents.length > 0 && (
+                                    <div className="text-[11px] text-gray-400 mt-1">
+                                      Parents: {parents.map((item) => item.parent?.name).filter(Boolean).join(' & ')}
+                                      
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
               )}
             </div>
 
+            {/* Children grouped by individual parent — uses getChildrenOfParent */}
             <div className="mt-8 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
               <div className="flex items-center gap-2 mb-1">
-                <Users
-                  size={18}
-                  className="text-orange-500"
-                />
-
-                <h3 className="font-montserrat font-bold text-gray-900">
-                  Children by Parent
-                </h3>
+                <Users size={18} className="text-orange-500" />
+                <h3 className="font-montserrat font-bold text-gray-900">Children by Parent</h3>
               </div>
-
-              <p className="text-gray-500 text-sm mb-5">
-                Every member who has at
-                least one recorded child,
-                and who those children are.
-              </p>
+              <p className="text-gray-500 text-sm mb-5">Every member who has at least one recorded child, and who those children are.</p>
 
               {(() => {
-                const parentsWithChildren =
-                  allMembers.filter(
-                    (member) =>
-                      getChildrenOfParent(
-                        member.id
-                      ).length >
-                      0
-                  );
-
-                if (
-                  parentsWithChildren.length ===
-                  0
-                ) {
-                  return (
-                    <p className="text-sm text-gray-400">
-                      No parent-child
-                      relationships have
-                      been recorded yet.
-                    </p>
-                  );
+                const parentsWithChildren = allMembers.filter((member) => getChildrenOfParent(member.id).length > 0);
+                if (parentsWithChildren.length === 0) {
+                  return <p className="text-sm text-gray-400">No parent-child relationships have been recorded yet.</p>;
                 }
-
                 return (
                   <div className="grid md:grid-cols-2 gap-3">
-                    {parentsWithChildren.map(
-                      (parent) => {
-                        const children =
-                          getChildrenOfParent(
-                            parent.id
-                          );
-
-                        return (
-                          <div
-                            key={
-                              parent.id
-                            }
-                            className="border border-gray-100 rounded-xl p-4 bg-gray-50"
-                          >
-                            <div className="font-semibold text-gray-800">
-                              {
-                                parent.name
-                              }
-                            </div>
-
-                            <div className="text-xs text-gray-500 mt-1">
-                              {children
-                                .map(
-                                  (
-                                    child
-                                  ) =>
-                                    child.name
-                                )
-                                .join(
-                                  ', '
-                                )}
-                            </div>
+                    {parentsWithChildren.map((parent) => {
+                      const children = getChildrenOfParent(parent.id);
+                      return (
+                        <div key={parent.id} className="border border-gray-100 rounded-xl p-4 bg-gray-50">
+                          <div className="font-semibold text-gray-800">{parent.name}</div>
+                          <div className="text-xs text-gray-500 mt-1">
+                            {children.map((child) => child.name).join(', ')}
                           </div>
-                        );
-                      }
-                    )}
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })()}
@@ -3455,1319 +1172,224 @@ export default function PortalPage() {
           </div>
         )}
 
-        {/* =====================================================
-            FAMILY TREE
-        ===================================================== */}
-
         {activeTab === 'tree' && (
-          <div>
-            <div className="mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900">
-                Family Tree
-              </h2>
+  <div>
+    <div className="mb-6">
+      <h2 className="font-montserrat text-xl font-bold text-gray-900">Family Tree</h2>
+      <p className="text-gray-500 text-sm mt-1">
+        A visual map of the Kornu family, built from recorded marriages and parent-child relationships.
+      </p>
+    </div>
 
-              <p className="text-gray-500 text-sm mt-1">
-                A visual map of the Kornu
-                family, built from recorded
-                marriages and parent-child
-                relationships.
-              </p>
-            </div>
-
-            {dbMembers.length ===
-            0 ? (
-              <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
-                <TreePine
-                  size={36}
-                  className="mx-auto text-gray-300 mb-3"
-                />
-
-                <p className="text-gray-500">
-                  No family members
-                  recorded yet.
-                </p>
-              </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 overflow-x-auto">
-                <div className="family-tree min-w-max">
-                  <ul>
-                    {buildTree().map(
-                      (rootNode) => (
-                        <FamilyTreeNode
-                          key={
-                            rootNode.member
-                              .id
-                          }
-                          node={
-                            rootNode
-                          }
-                          isRoot={true}
-                        />
-                      )
-                    )}
-                  </ul>
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* =====================================================
-            DOCUMENTS
-        ===================================================== */}
-
-        {activeTab ===
-          'documents' && (
-          <div>
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
-              <div>
-                <h2 className="font-montserrat text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <FileText
-                    size={20}
-                    className="text-orange-500"
-                  />
-                  Family Documents
-                </h2>
-
-                <p className="text-gray-500 text-sm mt-1">
-                  Important documents shared
-                  privately with the Kornu
-                  family.
-                </p>
-              </div>
-
-              <button
-                onClick={() => {
-                  resetDocumentForm();
-
-                  document
-                    .getElementById(
-                      'family-document-file'
-                    )
-                    ?.click();
-                }}
-                className="btn-primary py-2 px-4 text-sm"
-              >
-                <Plus size={14} />
-                Add Document
-              </button>
-            </div>
-
-            {documentError && (
-              <div className="mb-5 bg-red-50 border border-red-200 rounded-xl p-4 text-red-600 text-sm">
-                {
-                  documentError
-                }
-              </div>
-            )}
-
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 mb-6">
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-xl bg-orange-100 flex items-center justify-center">
-                  <FileText
-                    size={20}
-                    className="text-orange-500"
-                  />
-                </div>
-
-                <div>
-                  <h3 className="font-montserrat font-bold text-gray-900">
-                    Upload a Family
-                    Document
-                  </h3>
-
-                  <p className="text-gray-400 text-xs mt-0.5">
-                    Available to all
-                    authenticated family
-                    members
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
-                    Document Title
-                  </label>
-
-                  <input
-                    type="text"
-                    value={
-                      documentTitle
-                    }
-                    onChange={(e) =>
-                      setDocumentTitle(
-                        e.target.value
-                      )
-                    }
-                    placeholder="e.g. 2026 Family Constitution"
-                    className="input-field"
-                    disabled={
-                      uploadingDocument
-                    }
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
-                    Category
-                  </label>
-
-                  <select
-                    value={
-                      documentCategory
-                    }
-                    onChange={(e) =>
-                      setDocumentCategory(
-                        e.target.value
-                      )
-                    }
-                    className="input-field"
-                    disabled={
-                      uploadingDocument
-                    }
-                  >
-                    <option value="Family Records">
-                      Family Records
-                    </option>
-                    <option value="Family Constitution">
-                      Family Constitution
-                    </option>
-                    <option value="Meeting Minutes">
-                      Meeting Minutes
-                    </option>
-                    <option value="Financial Records">
-                      Financial Records
-                    </option>
-                    <option value="Historical Records">
-                      Historical Records
-                    </option>
-                    <option value="Legal Documents">
-                      Legal Documents
-                    </option>
-                    <option value="Other">
-                      Other
-                    </option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="mt-4">
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Select Document
-                </label>
-
-                <label
-                  htmlFor="family-document-file"
-                  className="block border-2 border-dashed border-gray-200 rounded-2xl p-5 text-center cursor-pointer hover:border-orange-300 hover:bg-orange-50/30 transition-colors"
-                >
-                  {documentFile ? (
-                    <div>
-                      <FileText
-                        size={28}
-                        className="mx-auto text-orange-500 mb-2"
-                      />
-
-                      <p className="text-sm font-semibold text-gray-700">
-                        {
-                          documentFile.name
-                        }
-                      </p>
-
-                      <p className="text-xs text-gray-400 mt-1">
-                        {(
-                          documentFile.size /
-                          (1024 *
-                            1024)
-                        ).toFixed(
-                          2
-                        )}{' '}
-                        MB
-                      </p>
-                    </div>
-                  ) : (
-                    <div>
-                      <FileText
-                        size={28}
-                        className="mx-auto text-gray-300 mb-2"
-                      />
-
-                      <p className="text-sm text-gray-500">
-                        Click here to select
-                        a document
-                      </p>
-
-                      <p className="text-xs text-gray-400 mt-1">
-                        Maximum file size:
-                        10 MB
-                      </p>
-                    </div>
-                  )}
-                </label>
-
-                <input
-                  id="family-document-file"
-                  type="file"
-                  accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.jpg,.jpeg,.png"
-                  onChange={
-                    handleDocumentFileChange
-                  }
-                  className="hidden"
-                  disabled={
-                    uploadingDocument
-                  }
-                />
-              </div>
-
-              <div className="flex justify-end mt-5">
-                <button
-                  onClick={
-                    uploadDocument
-                  }
-                  disabled={
-                    uploadingDocument ||
-                    !documentTitle.trim() ||
-                    !documentFile
-                  }
-                  className="btn-primary px-5 py-2.5 justify-center disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  {uploadingDocument
-                    ? 'Uploading...'
-                    : 'Upload Document'}
-                </button>
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-6 border-b border-gray-100">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h3 className="font-montserrat font-bold text-gray-900">
-                      Document Library
-                    </h3>
-
-                    <p className="text-gray-400 text-xs mt-1">
-                      {
-                        documents.length
-                      }{' '}
-                      document
-                      {documents.length ===
-                      1
-                        ? ''
-                        : 's'}{' '}
-                      available
-                    </p>
-                  </div>
-
-                  {isAdmin && (
-                    <span className="inline-flex items-center gap-1.5 bg-orange-50 text-orange-600 px-3 py-1.5 rounded-full text-xs font-semibold">
-                      <Shield
-                        size={13}
-                      />
-                      Admin can delete
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {documents.length ===
-              0 ? (
-                <div className="p-10 text-center">
-                  <FileText
-                    size={44}
-                    className="mx-auto text-gray-300 mb-4"
-                  />
-
-                  <h3 className="font-montserrat text-lg font-bold text-gray-900">
-                    No documents yet
-                  </h3>
-
-                  <p className="text-gray-500 text-sm mt-2">
-                    Be the first family
-                    member to upload an
-                    important family
-                    document.
-                  </p>
-                </div>
-              ) : (
-                <div className="divide-y divide-gray-100">
-                  {documents.map(
-                    (document) => (
-                      <div
-                        key={
-                          document.id
-                        }
-                        className="p-5 flex flex-col md:flex-row md:items-center gap-4 hover:bg-gray-50 transition-colors"
-                      >
-                        <div className="w-12 h-12 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0">
-                          <FileText
-                            size={22}
-                            className="text-orange-500"
-                          />
-                        </div>
-
-                        <div className="flex-1 min-w-0">
-                          <h4 className="font-semibold text-gray-900 text-sm truncate">
-                            {
-                              document.title
-                            }
-                          </h4>
-
-                          <div className="flex flex-wrap items-center gap-2 mt-1.5">
-                            {document.category && (
-                              <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">
-                                {
-                                  document.category
-                                }
-                              </span>
-                            )}
-
-                            <span className="text-xs text-gray-400">
-                              {
-                                document.file_name
-                              }
-                            </span>
-
-                            <span className="text-xs text-gray-400">
-                              ·
-                            </span>
-
-                            <span className="text-xs text-gray-400">
-                              {new Date(
-                                document.created_at
-                              ).toLocaleDateString(
-                                'en-GB',
-                                {
-                                  day: 'numeric',
-                                  month: 'short',
-                                  year: 'numeric',
-                                }
-                              )}
-                            </span>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() =>
-                              openDocument(
-                                document
-                              )
-                            }
-                            className="px-3 py-2 rounded-xl bg-orange-50 text-orange-600 text-xs font-semibold hover:bg-orange-100 transition-colors"
-                          >
-                            Open
-                          </button>
-
-                          {isAdmin && (
-                            <button
-                              onClick={() =>
-                                deleteDocument(
-                                  document
-                                )
-                              }
-                              className="px-3 py-2 rounded-xl bg-red-50 text-red-600 text-xs font-semibold hover:bg-red-100 transition-colors"
-                            >
-                              Delete
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* =====================================================
-            GALLERY
-        ===================================================== */}
-
-        {activeTab === 'gallery' && (
-          <div>
-            <div className="mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Image
-                  size={20}
-                  className="text-purple-500"
-                />
-                Private Gallery
-              </h2>
-
-              <p className="text-gray-500 text-sm mt-1">
-                Family photos available to
-                signed-in family members.
-              </p>
-            </div>
-
+    {dbMembers.length === 0 ? (
+      <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
+        <TreePine size={36} className="mx-auto text-gray-300 mb-3" />
+        <p className="text-gray-500">No family members recorded yet.</p>
+      </div>
+    ) : (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 overflow-x-auto">
+        <div className="family-tree min-w-max">
+          <ul>
             {(() => {
-              const galleryItems = [
-                ...allMembers
-                  .filter(
-                    (member) =>
-                      member.image &&
-                      !member.image.includes(
-                        'placeholder.jpg'
-                      )
-                  )
-                  .map(
-                    (member) => ({
-                      id: `member-${member.id}`,
-                      image:
-                        member.image,
-                      title:
-                        member.name,
-                      subtitle:
-                        'Family member',
-                    })
-                  ),
+              const roots = buildTree();
+              const rootNode = roots[0];
 
-                ...allEvents
-                  .filter(
-                    (event) =>
-                      event.image
-                  )
-                  .map(
-                    (event) => ({
-                      id: `event-${event.id}`,
-                      image:
-                        event.image as string,
-                      title:
-                        event.title,
-                      subtitle:
-                        'Family event',
-                    })
-                  ),
-              ];
-
-              if (
-                galleryItems.length ===
-                0
-              ) {
-                return (
-                  <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
-                    <Image
-                      size={44}
-                      className="mx-auto text-purple-300 mb-4"
-                    />
-
-                    <h3 className="font-montserrat text-lg font-bold text-gray-900">
-                      No photos yet
-                    </h3>
-
-                    <p className="text-gray-500 text-sm mt-2">
-                      Photos uploaded
-                      through the family
-                      portal will appear
-                      here.
-                    </p>
-                  </div>
-                );
-              }
+              if (!rootNode) return null;
 
               return (
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {galleryItems.map(
-                    (item) => (
-                      <div
-                        key={
-                          item.id
-                        }
-                        className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm card-hover"
-                      >
-                        <div className="aspect-square bg-gray-100">
-                          <img
-                            src={
-                              item.image
-                            }
-                            alt={
-                              item.title
-                            }
-                            className="w-full h-full object-cover"
-                            onError={(
-                              e
-                            ) => {
-                              e.currentTarget.style.display =
-                                'none';
-                            }}
-                          />
-                        </div>
-
-                        <div className="p-3">
-                          <p className="font-semibold text-gray-800 text-sm truncate">
-                            {
-                              item.title
-                            }
-                          </p>
-
-                          <p className="text-gray-400 text-xs mt-0.5">
-                            {
-                              item.subtitle
-                            }
-                          </p>
-                        </div>
-                      </div>
-                    )
-                  )}
-                </div>
+                <FamilyTreeNode
+                  key={rootNode.member.id}
+                  node={rootNode}
+                  isRoot={true}
+                />
               );
             })()}
-          </div>
-        )}
-
-        {/* =====================================================
-            SETTINGS
-        ===================================================== */}
-
-        {activeTab === 'settings' && (
-          <div>
-            <div className="mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Settings
-                  size={20}
-                  className="text-gray-600"
-                />
-                Settings
-              </h2>
-
-              <p className="text-gray-500 text-sm mt-1">
-                Manage your family portal
-                account.
-              </p>
-            </div>
-
-            <div className="max-w-2xl bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
-              <div className="p-6 bg-gradient-to-r from-gray-50 to-orange-50">
-                <div className="flex items-center gap-4">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-2xl font-bold">
-                    {currentUser?.name
-                      ?.charAt(0)
-                      .toUpperCase() ||
-                      'F'}
-                  </div>
-
-                  <div>
-                    <h3 className="font-montserrat font-bold text-gray-900">
-                      {currentUser?.name ||
-                        'Family Member'}
-                    </h3>
-
-                    <p className="text-gray-500 text-sm">
-                      {currentUser?.email ||
-                        'No email available'}
-                    </p>
-
-                    <span className="inline-block mt-2 text-xs font-semibold bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full">
-                      {isAdmin
-                        ? 'Administrator'
-                        : 'Family Member'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-6 space-y-4">
-                <div className="rounded-xl border border-gray-100 bg-gray-50 p-4">
-                  <p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">
-                    Account status
-                  </p>
-
-                  <p className="text-sm text-green-600 font-semibold mt-1">
-                    Authenticated and
-                    connected to the family
-                    portal
-                  </p>
-                </div>
-
-                <button
-                  onClick={
-                    logout
-                  }
-                  className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-100 text-red-600 px-4 py-3 text-sm font-semibold hover:bg-red-100 transition-colors"
-                >
-                  <LogOut
-                    size={16}
-                  />
-                  Sign Out
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* =====================================================
-            EVENTS
-        ===================================================== */}
+          </ul>
+        </div>
+      </div>
+    )}
+  </div>
+)}
 
         {activeTab === 'events' && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900">
-                My Family Events
-              </h2>
-
+              <h2 className="font-montserrat text-xl font-bold text-gray-900">My Family Events</h2>
               {isAdmin && (
-                <button
-                  onClick={() => {
-                    resetEventForm();
-                    setShowEventForm(
-                      true
-                    );
-                  }}
-                  className="btn-primary py-2 px-4 text-sm"
-                >
-                  <Plus size={14} />
-                  Add Event
+                <button onClick={() => { resetEventForm(); setShowEventForm(true); }} className="btn-primary py-2 px-4 text-sm">
+                  <Plus size={14} /> Add Event
                 </button>
               )}
             </div>
 
             <div className="space-y-4">
-              {allEvents.map(
-                (event) => (
-                  <div
-                    key={
-                      event.id
-                    }
-                    className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex gap-4"
-                  >
-                    {event.image ? (
-                      <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden">
-                        <img
-                          src={
-                            event.image
-                          }
-                          alt={
-                            event.title
-                          }
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    ) : (
-                      <div className="w-16 h-16 flex-shrink-0 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex flex-col items-center justify-center text-white">
-                        <div className="text-xl font-black font-montserrat leading-none">
-                          {new Date(
-                            event.date
-                          ).getDate()}
-                        </div>
-
-                        <div className="text-xs font-semibold opacity-80">
-                          {new Date(
-                            event.date
-                          ).toLocaleDateString(
-                            'en-GB',
-                            {
-                              month:
-                                'short',
-                            }
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex-1">
-                      <h3 className="font-bold text-gray-900 font-montserrat text-base">
-                        {
-                          event.title
-                        }
-                      </h3>
-
-                      <p className="text-gray-500 text-sm mt-1">
-                        {
-                          event.location
-                        }
-                      </p>
-
-                      <p className="text-gray-400 text-xs mt-2 line-clamp-1">
-                        {
-                          event.description
-                        }
-                      </p>
+              {allEvents.map((event) => (
+                <div key={event.id} className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex gap-4">
+                  {event.image ? (
+                    <div className="w-16 h-16 flex-shrink-0 rounded-xl overflow-hidden">
+                      <img src={event.image} alt={event.title} className="w-full h-full object-cover" />
                     </div>
-
-                    <div className="flex flex-col items-end gap-2">
-                      <span className="text-xs bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full font-semibold capitalize">
-                        {
-                          event.type
-                        }
-                      </span>
-
-                      {event.rsvpCount !==
-                        undefined && (
-                        <span className="text-xs text-gray-400">
-                          {
-                            event.rsvpCount
-                          }{' '}
-                          attending
-                        </span>
-                      )}
+                  ) : (
+                    <div className="w-16 h-16 flex-shrink-0 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex flex-col items-center justify-center text-white">
+                      <div className="text-xl font-black font-montserrat leading-none">{new Date(event.date).getDate()}</div>
+                      <div className="text-xs font-semibold opacity-80">{new Date(event.date).toLocaleDateString('en-GB', { month: 'short' })}</div>
                     </div>
+                  )}
+                  <div className="flex-1">
+                    <h3 className="font-bold text-gray-900 font-montserrat text-base">{event.title}</h3>
+                    <p className="text-gray-500 text-sm mt-1">{event.location}</p>
+                    <p className="text-gray-400 text-xs mt-2 line-clamp-1">{event.description}</p>
                   </div>
-                )
-              )}
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="text-xs bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full font-semibold capitalize">{event.type}</span>
+                    {event.rsvpCount !== undefined && <span className="text-xs text-gray-400">{event.rsvpCount} attending</span>}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* =====================================================
-            ANNOUNCEMENTS
-        ===================================================== */}
-
-        {activeTab ===
-          'announcements' && (
+        {activeTab === 'announcements' && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900">
-                Family Announcements
-              </h2>
-
+              <h2 className="font-montserrat text-xl font-bold text-gray-900">Family Announcements</h2>
               {isAdmin && (
-                <button
-                  onClick={() => {
-                    resetAnnouncementForm();
-                    setShowAnnouncementForm(
-                      true
-                    );
-                  }}
-                  className="btn-primary py-2 px-4 text-sm"
-                >
-                  <Plus size={14} />
-                  Post Announcement
+                <button onClick={() => { resetAnnouncementForm(); setShowAnnouncementForm(true); }} className="btn-primary py-2 px-4 text-sm">
+                  <Plus size={14} /> Post Announcement
                 </button>
               )}
             </div>
 
             <div className="space-y-4">
-              {allAnnouncements.map(
-                (a) => (
-                  <div
-                    key={
-                      a.id
-                    }
-                    className={`bg-white rounded-2xl p-6 shadow-sm border-l-4 ${
-                      a.priority ===
-                      'high'
-                        ? 'border-orange-500'
-                        : 'border-blue-400'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          {a.priority ===
-                            'high' && (
-                            <span className="text-xs bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full font-semibold">
-                              Important
-                            </span>
-                          )}
-
-                          <span className="text-xs text-gray-400">
-                            {new Date(
-                              a.date
-                            ).toLocaleDateString(
-                              'en-GB',
-                              {
-                                day: 'numeric',
-                                month:
-                                  'long',
-                                year: 'numeric',
-                              }
-                            )}
-                          </span>
-                        </div>
-
-                        <h3 className="font-bold text-gray-900 font-montserrat text-lg">
-                          {
-                            a.title
-                          }
-                        </h3>
-
-                        <p className="text-gray-500 text-sm mt-1">
-                          Posted by{' '}
-                          {
-                            a.author
-                          }
-                        </p>
+              {allAnnouncements.map((a) => (
+                <div key={a.id} className={`bg-white rounded-2xl p-6 shadow-sm border-l-4 ${a.priority === 'high' ? 'border-orange-500' : 'border-blue-400'}`}>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-2">
+                        {a.priority === 'high' && <span className="text-xs bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full font-semibold">Important</span>}
+                        <span className="text-xs text-gray-400">{new Date(a.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                       </div>
-
-                      <Bell
-                        size={18}
-                        className={
-                          a.priority ===
-                          'high'
-                            ? 'text-orange-500'
-                            : 'text-blue-400'
-                        }
-                      />
+                      <h3 className="font-bold text-gray-900 font-montserrat text-lg">{a.title}</h3>
+                      <p className="text-gray-500 text-sm mt-1">Posted by {a.author}</p>
                     </div>
+                    <Bell size={18} className={a.priority === 'high' ? 'text-orange-500' : 'text-blue-400'} />
                   </div>
-                )
-              )}
+                </div>
+              ))}
             </div>
           </div>
         )}
       </div>
-
-      {/* ========================================================
-          MARRIAGE MODAL
-      ======================================================== */}
 
       {showMarriageForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h2 className="font-montserrat text-xl font-bold text-gray-900">
-                  Add Marriage /
-                  Partnership
-                </h2>
-
-                <p className="text-gray-400 text-xs mt-1">
-                  Create the parent unit
-                  first, then assign
-                  children.
-                </p>
+                <h2 className="font-montserrat text-xl font-bold text-gray-900">Add Marriage / Partnership</h2>
+                <p className="text-gray-400 text-xs mt-1">Create the parent unit first, then assign children.</p>
               </div>
-
-              <button
-                onClick={() => {
-                  resetMarriageForm();
-                  setShowMarriageForm(
-                    false
-                  );
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
+              <button onClick={() => { resetMarriageForm(); setShowMarriageForm(false); }} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
 
             <div className="space-y-4">
-              <select
-                value={
-                  marriageSpouse1
-                }
-                onChange={(e) =>
-                  setMarriageSpouse1(
-                    e.target.value
-                  )
-                }
-                className="input-field"
-              >
-                <option value="">
-                  Select spouse 1
-                </option>
-
-                {dbMembers.map(
-                  (m) => (
-                    <option
-                      key={
-                        m.id
-                      }
-                      value={
-                        m.id
-                      }
-                    >
-                      {
-                        m.name
-                      }
-                    </option>
-                  )
-                )}
+              <select value={marriageSpouse1} onChange={(e) => setMarriageSpouse1(e.target.value)} className="input-field">
+                <option value="">Select spouse 1</option>
+                {dbMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
 
-              <select
-                value={
-                  marriageSpouse2
-                }
-                onChange={(e) =>
-                  setMarriageSpouse2(
-                    e.target.value
-                  )
-                }
-                className="input-field"
-              >
-                <option value="">
-                  Select spouse 2
-                </option>
-
-                {dbMembers.map(
-                  (m) => (
-                    <option
-                      key={
-                        m.id
-                      }
-                      value={
-                        m.id
-                      }
-                    >
-                      {
-                        m.name
-                      }
-                    </option>
-                  )
-                )}
+              <select value={marriageSpouse2} onChange={(e) => setMarriageSpouse2(e.target.value)} className="input-field">
+                <option value="">Select spouse 2</option>
+                {dbMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
               </select>
 
               <div>
-                <label className="block text-xs font-medium text-gray-500 mb-1">
-                  Marriage Date
-                </label>
-
-                <input
-                  type="date"
-                  value={
-                    marriageDate
-                  }
-                  onChange={(e) =>
-                    setMarriageDate(
-                      e.target.value
-                    )
-                  }
-                  className="input-field"
-                />
+                <label className="block text-xs font-medium text-gray-500 mb-1">Marriage Date</label>
+                <input type="date" value={marriageDate} onChange={(e) => setMarriageDate(e.target.value)} className="input-field" />
               </div>
 
-              <select
-                value={
-                  marriageStatus
-                }
-                onChange={(e) =>
-                  setMarriageStatus(
-                    e.target.value
-                  )
-                }
-                className="input-field"
-              >
-                <option value="married">
-                  Married
-                </option>
-
-                <option value="divorced">
-                  Divorced
-                </option>
-
-                <option value="widowed">
-                  Widowed
-                </option>
-
-                <option value="separated">
-                  Separated
-                </option>
+              <select value={marriageStatus} onChange={(e) => setMarriageStatus(e.target.value)} className="input-field">
+                <option value="married">Married</option>
+                <option value="divorced">Divorced</option>
+                <option value="widowed">Widowed</option>
+                <option value="separated">Separated</option>
               </select>
 
-              {marriageFormError && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
-                  {
-                    marriageFormError
-                  }
-                </div>
-              )}
+              {marriageFormError && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">{marriageFormError}</div>}
 
               <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    resetMarriageForm();
-                    setShowMarriageForm(
-                      false
-                    );
-                  }}
-                  className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={
-                    submitMarriage
-                  }
-                  disabled={
-                    postingMarriage
-                  }
-                  className="flex-1 btn-primary justify-center disabled:opacity-60"
-                >
-                  {postingMarriage
-                    ? 'Saving...'
-                    : 'Create Relationship'}
+                <button onClick={() => { resetMarriageForm(); setShowMarriageForm(false); }} className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium">Cancel</button>
+                <button onClick={submitMarriage} disabled={postingMarriage} className="flex-1 btn-primary justify-center disabled:opacity-60">
+                  {postingMarriage ? 'Saving...' : 'Create Relationship'}
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* ========================================================
-          EVENT MODAL
-      ======================================================== */}
 
       {showEventForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900">
-                Add Event
-              </h2>
-
-              <button
-                onClick={() => {
-                  resetEventForm();
-                  setShowEventForm(
-                    false
-                  );
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
+              <h2 className="font-montserrat text-xl font-bold text-gray-900">Add Event</h2>
+              <button onClick={() => { resetEventForm(); setShowEventForm(false); }} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
-
             <div className="space-y-4">
-              <input
-                type="text"
-                value={
-                  eventTitle
-                }
-                onChange={(e) =>
-                  setEventTitle(
-                    e.target.value
-                  )
-                }
-                placeholder="Event title"
-                className="input-field"
-              />
-
-              <input
-                type="date"
-                value={
-                  eventDate
-                }
-                onChange={(e) =>
-                  setEventDate(
-                    e.target.value
-                  )
-                }
-                className="input-field"
-              />
-
-              <input
-                type="text"
-                value={
-                  eventLocation
-                }
-                onChange={(e) =>
-                  setEventLocation(
-                    e.target.value
-                  )
-                }
-                placeholder="Location"
-                className="input-field"
-              />
-
-              <select
-                value={
-                  eventType
-                }
-                onChange={(e) =>
-                  setEventType(
-                    e.target.value
-                  )
-                }
-                className="input-field"
-              >
-                <option value="reunion">
-                  Reunion
-                </option>
-                <option value="birthday">
-                  Birthday
-                </option>
-                <option value="wedding">
-                  Wedding
-                </option>
-                <option value="memorial">
-                  Memorial
-                </option>
-                <option value="celebration">
-                  Celebration
-                </option>
+              <input type="text" value={eventTitle} onChange={(e) => setEventTitle(e.target.value)} placeholder="Event title" className="input-field" />
+              <input type="date" value={eventDate} onChange={(e) => setEventDate(e.target.value)} className="input-field" />
+              <input type="text" value={eventLocation} onChange={(e) => setEventLocation(e.target.value)} placeholder="Location" className="input-field" />
+              <select value={eventType} onChange={(e) => setEventType(e.target.value)} className="input-field">
+                <option value="reunion">Reunion</option>
+                <option value="birthday">Birthday</option>
+                <option value="wedding">Wedding</option>
+                <option value="memorial">Memorial</option>
+                <option value="celebration">Celebration</option>
               </select>
-
-              <textarea
-                value={
-                  eventDescription
-                }
-                onChange={(e) =>
-                  setEventDescription(
-                    e.target.value
-                  )
-                }
-                placeholder="Description"
-                rows={3}
-                className="input-field resize-none"
-              />
-
+              <textarea value={eventDescription} onChange={(e) => setEventDescription(e.target.value)} placeholder="Description" rows={3} className="input-field resize-none" />
               <label className="block">
                 <div className="border-2 border-dashed border-gray-200 rounded-2xl p-4 text-center cursor-pointer hover:border-orange-300 transition-colors">
-                  {eventImagePreview ? (
-                    <img
-                      src={
-                        eventImagePreview
-                      }
-                      alt="Event preview"
-                      className="max-h-32 mx-auto rounded-xl object-cover"
-                    />
-                  ) : (
-                    <p className="text-sm text-gray-400">
-                      Click to add a
-                      photo (optional)
-                    </p>
-                  )}
+                  {eventImagePreview ? <img src={eventImagePreview} alt="Event preview" className="max-h-32 mx-auto rounded-xl object-cover" /> : <p className="text-sm text-gray-400">Click to add a photo (optional)</p>}
                 </div>
-
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={
-                    handleEventImageChange
-                  }
-                  className="hidden"
-                />
+                <input type="file" accept="image/*" onChange={handleEventImageChange} className="hidden" />
               </label>
-
-              {eventFormError && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
-                  {
-                    eventFormError
-                  }
-                </div>
-              )}
-
+              {eventFormError && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">{eventFormError}</div>}
               <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    resetEventForm();
-                    setShowEventForm(
-                      false
-                    );
-                  }}
-                  className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={
-                    submitEvent
-                  }
-                  disabled={
-                    postingEvent
-                  }
-                  className="flex-1 btn-primary justify-center disabled:opacity-60"
-                >
-                  {postingEvent
-                    ? 'Posting...'
-                    : 'Post Event'}
+                <button onClick={() => { resetEventForm(); setShowEventForm(false); }} className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium">Cancel</button>
+                <button onClick={submitEvent} disabled={postingEvent} className="flex-1 btn-primary justify-center disabled:opacity-60">
+                  {postingEvent ? 'Posting...' : 'Post Event'}
                 </button>
               </div>
             </div>
           </div>
         </div>
       )}
-
-      {/* ========================================================
-          ANNOUNCEMENT MODAL
-      ======================================================== */}
 
       {showAnnouncementForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900">
-                Post Announcement
-              </h2>
-
-              <button
-                onClick={() => {
-                  resetAnnouncementForm();
-                  setShowAnnouncementForm(
-                    false
-                  );
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
+              <h2 className="font-montserrat text-xl font-bold text-gray-900">Post Announcement</h2>
+              <button onClick={() => { resetAnnouncementForm(); setShowAnnouncementForm(false); }} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
-
             <div className="space-y-4">
-              <input
-                type="text"
-                value={
-                  annTitle
-                }
-                onChange={(e) =>
-                  setAnnTitle(
-                    e.target.value
-                  )
-                }
-                placeholder="Announcement title"
-                className="input-field"
-              />
-
-              <select
-                value={
-                  annPriority
-                }
-                onChange={(e) =>
-                  setAnnPriority(
-                    e.target.value
-                  )
-                }
-                className="input-field"
-              >
-                <option value="medium">
-                  Medium priority
-                </option>
-
-                <option value="high">
-                  High priority
-                </option>
+              <input type="text" value={annTitle} onChange={(e) => setAnnTitle(e.target.value)} placeholder="Announcement title" className="input-field" />
+              <select value={annPriority} onChange={(e) => setAnnPriority(e.target.value)} className="input-field">
+                <option value="medium">Medium priority</option>
+                <option value="high">High priority</option>
               </select>
-
-              {annFormError && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
-                  {
-                    annFormError
-                  }
-                </div>
-              )}
-
+              {annFormError && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">{annFormError}</div>}
               <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    resetAnnouncementForm();
-                    setShowAnnouncementForm(
-                      false
-                    );
-                  }}
-                  className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={
-                    submitAnnouncement
-                  }
-                  disabled={
-                    postingAnn
-                  }
-                  className="flex-1 btn-primary justify-center disabled:opacity-60"
-                >
-                  {postingAnn
-                    ? 'Posting...'
-                    : 'Post'}
+                <button onClick={() => { resetAnnouncementForm(); setShowAnnouncementForm(false); }} className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium">Cancel</button>
+                <button onClick={submitAnnouncement} disabled={postingAnn} className="flex-1 btn-primary justify-center disabled:opacity-60">
+                  {postingAnn ? 'Posting...' : 'Post'}
                 </button>
               </div>
             </div>
@@ -4775,321 +1397,66 @@ export default function PortalPage() {
         </div>
       )}
 
-      {/* ========================================================
-          MEMBER MODAL
-      ======================================================== */}
-
       {showMemberForm && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="font-montserrat text-xl font-bold text-gray-900">
-                Add Family Member
-              </h2>
-
-              <button
-                onClick={() => {
-                  resetMemberForm();
-                  setShowMemberForm(
-                    false
-                  );
-                }}
-                className="text-gray-400 hover:text-gray-600"
-              >
+              <h2 className="font-montserrat text-xl font-bold text-gray-900">Add Family Member</h2>
+              <button onClick={() => { resetMemberForm(); setShowMemberForm(false); }} className="text-gray-400 hover:text-gray-600">
                 <X size={20} />
               </button>
             </div>
-
             <div className="space-y-4">
-              <input
-                type="text"
-                value={
-                  memberName
-                }
-                onChange={(e) =>
-                  setMemberName(
-                    e.target.value
-                  )
-                }
-                placeholder="Full name"
-                className="input-field"
-              />
-
-              <input
-                type="text"
-                value={
-                  memberRole
-                }
-                onChange={(e) =>
-                  setMemberRole(
-                    e.target.value
-                  )
-                }
-                placeholder="Role (e.g. Son · Doctor)"
-                className="input-field"
-              />
-
-              <select
-                value={
-                  memberGeneration
-                }
-                onChange={(e) =>
-                  setMemberGeneration(
-                    e.target.value
-                  )
-                }
-                className="input-field"
-              >
-                <option value="1">
-                  Generation 1 —
-                  Founders
-                </option>
-
-                <option value="2">
-                  Generation 2 —
-                  Parents
-                </option>
-
-                <option value="3">
-                  Generation 3 —
-                  Grandchildren
-                </option>
-
-                <option value="4">
-                  Generation 4 —
-                  Great-Grandchildren
-                </option>
-
-                <option value="5">
-                  Generation 5 —
-                  Great-Great-Grandchildren
-                </option>
-
-                <option value="6">
-                  Generation 6 —
-                  Great-Great-Great-Grandchildren
-                </option>
+              <input type="text" value={memberName} onChange={(e) => setMemberName(e.target.value)} placeholder="Full name" className="input-field" />
+              <input type="text" value={memberRole} onChange={(e) => setMemberRole(e.target.value)} placeholder="Role (e.g. Son · Doctor)" className="input-field" />
+              <select value={memberGeneration} onChange={(e) => setMemberGeneration(e.target.value)} className="input-field">
+                <option value="1">Generation 1 — Founders</option>
+                <option value="2">Generation 2 — Parents</option>
+                <option value="3">Generation 3 — Grandchildren</option>
+                <option value="4">Generation 4 — Great-Grandchildren</option>
+                <option value="5">Generation 5 — Great-Great-Grandchildren</option>
+                <option value="6">Generation 6 — Great-Great-Great-Grandchildren</option>
               </select>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
-                    Birth Date
-                    (optional)
-                  </label>
-
-                  <input
-                    type="date"
-                    value={
-                      memberBirthDate
-                    }
-                    onChange={(e) =>
-                      setMemberBirthDate(
-                        e.target.value
-                      )
-                    }
-                    className="input-field"
-                  />
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Birth Date (optional)</label>
+                  <input type="date" value={memberBirthDate} onChange={(e) => setMemberBirthDate(e.target.value)} className="input-field" />
                 </div>
-
                 <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">
-                    Date of Passing
-                    (if applicable)
-                  </label>
-
-                  <input
-                    type="date"
-                    value={
-                      memberDateOfPassing
-                    }
-                    onChange={(e) =>
-                      setMemberDateOfPassing(
-                        e.target.value
-                      )
-                    }
-                    className="input-field"
-                  />
+                  <label className="block text-xs font-medium text-gray-500 mb-1">Date of Passing (if applicable)</label>
+                  <input type="date" value={memberDateOfPassing} onChange={(e) => setMemberDateOfPassing(e.target.value)} className="input-field" />
                 </div>
               </div>
 
-              <input
-                type="text"
-                value={
-                  memberLocation
-                }
-                onChange={(e) =>
-                  setMemberLocation(
-                    e.target.value
-                  )
-                }
-                placeholder="Location (optional)"
-                className="input-field"
-              />
+              <input type="text" value={memberLocation} onChange={(e) => setMemberLocation(e.target.value)} placeholder="Location (optional)" className="input-field" />
+              <input type="text" value={memberOccupation} onChange={(e) => setMemberOccupation(e.target.value)} placeholder="Occupation (optional)" className="input-field" />
+              <textarea value={memberBio} onChange={(e) => setMemberBio(e.target.value)} placeholder="Bio" rows={3} className="input-field resize-none" />
+              <input type="text" value={memberTags} onChange={(e) => setMemberTags(e.target.value)} placeholder="Tags, comma separated (e.g. Doctor, Healer)" className="input-field" />
 
-              <input
-                type="text"
-                value={
-                  memberOccupation
-                }
-                onChange={(e) =>
-                  setMemberOccupation(
-                    e.target.value
-                  )
-                }
-                placeholder="Occupation (optional)"
-                className="input-field"
-              />
-
-              <textarea
-                value={
-                  memberBio
-                }
-                onChange={(e) =>
-                  setMemberBio(
-                    e.target.value
-                  )
-                }
-                placeholder="Bio"
-                rows={3}
-                className="input-field resize-none"
-              />
-
-              <input
-                type="text"
-                value={
-                  memberTags
-                }
-                onChange={(e) =>
-                  setMemberTags(
-                    e.target.value
-                  )
-                }
-                placeholder="Tags, comma separated (e.g. Doctor, Healer)"
-                className="input-field"
-              />
-
+              {/* Relationship fields — spouse, father, mother, all optional, drawn from existing db members */}
               <div className="border-t border-gray-100 pt-4">
-                <p className="text-sm font-semibold text-gray-700 mb-3">
-                  Family Relationships
-                  (optional)
-                </p>
-
+                <p className="text-sm font-semibold text-gray-700 mb-3">Family Relationships (optional)</p>
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                      Spouse
-                    </label>
-
-                    <select
-                      value={
-                        memberSpouseId
-                      }
-                      onChange={(e) =>
-                        setMemberSpouseId(
-                          e.target.value
-                        )
-                      }
-                      className="input-field"
-                    >
-                      <option value="">
-                        None
-                      </option>
-
-                      {dbMembers.map(
-                        (m) => (
-                          <option
-                            key={
-                              m.id
-                            }
-                            value={
-                              m.id
-                            }
-                          >
-                            {
-                              m.name
-                            }
-                          </option>
-                        )
-                      )}
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Spouse</label>
+                    <select value={memberSpouseId} onChange={(e) => setMemberSpouseId(e.target.value)} className="input-field">
+                      <option value="">None</option>
+                      {dbMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
                   </div>
-
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                      Father
-                    </label>
-
-                    <select
-                      value={
-                        memberFatherId
-                      }
-                      onChange={(e) =>
-                        setMemberFatherId(
-                          e.target.value
-                        )
-                      }
-                      className="input-field"
-                    >
-                      <option value="">
-                        None / Unknown
-                      </option>
-
-                      {dbMembers.map(
-                        (m) => (
-                          <option
-                            key={
-                              m.id
-                            }
-                            value={
-                              m.id
-                            }
-                          >
-                            {
-                              m.name
-                            }
-                          </option>
-                        )
-                      )}
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Father</label>
+                    <select value={memberFatherId} onChange={(e) => setMemberFatherId(e.target.value)} className="input-field">
+                      <option value="">None / Unknown</option>
+                      {dbMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
                   </div>
-
                   <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">
-                      Mother
-                    </label>
-
-                    <select
-                      value={
-                        memberMotherId
-                      }
-                      onChange={(e) =>
-                        setMemberMotherId(
-                          e.target.value
-                        )
-                      }
-                      className="input-field"
-                    >
-                      <option value="">
-                        None / Unknown
-                      </option>
-
-                      {dbMembers.map(
-                        (m) => (
-                          <option
-                            key={
-                              m.id
-                            }
-                            value={
-                              m.id
-                            }
-                          >
-                            {
-                              m.name
-                            }
-                          </option>
-                        )
-                      )}
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Mother</label>
+                    <select value={memberMotherId} onChange={(e) => setMemberMotherId(e.target.value)} className="input-field">
+                      <option value="">None / Unknown</option>
+                      {dbMembers.map((m) => <option key={m.id} value={m.id}>{m.name}</option>)}
                     </select>
                   </div>
                 </div>
@@ -5097,65 +1464,17 @@ export default function PortalPage() {
 
               <label className="block">
                 <div className="border-2 border-dashed border-gray-200 rounded-2xl p-4 text-center cursor-pointer hover:border-orange-300 transition-colors">
-                  {memberImagePreview ? (
-                    <img
-                      src={
-                        memberImagePreview
-                      }
-                      alt="Member preview"
-                      className="max-h-32 mx-auto rounded-xl object-cover"
-                    />
-                  ) : (
-                    <p className="text-sm text-gray-400">
-                      Click to add a
-                      photo (optional)
-                    </p>
-                  )}
+                  {memberImagePreview ? <img src={memberImagePreview} alt="Member preview" className="max-h-32 mx-auto rounded-xl object-cover" /> : <p className="text-sm text-gray-400">Click to add a photo (optional)</p>}
                 </div>
-
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={
-                    handleMemberImageChange
-                  }
-                  className="hidden"
-                />
+                <input type="file" accept="image/*" onChange={handleMemberImageChange} className="hidden" />
               </label>
 
-              {memberFormError && (
-                <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
-                  {
-                    memberFormError
-                  }
-                </div>
-              )}
+              {memberFormError && <div className="bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">{memberFormError}</div>}
 
               <div className="flex gap-3">
-                <button
-                  onClick={() => {
-                    resetMemberForm();
-                    setShowMemberForm(
-                      false
-                    );
-                  }}
-                  className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium"
-                >
-                  Cancel
-                </button>
-
-                <button
-                  onClick={
-                    submitMember
-                  }
-                  disabled={
-                    postingMember
-                  }
-                  className="flex-1 btn-primary justify-center disabled:opacity-60"
-                >
-                  {postingMember
-                    ? 'Adding...'
-                    : 'Add Member'}
+                <button onClick={() => { resetMemberForm(); setShowMemberForm(false); }} className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium">Cancel</button>
+                <button onClick={submitMember} disabled={postingMember} className="flex-1 btn-primary justify-center disabled:opacity-60">
+                  {postingMember ? 'Adding...' : 'Add Member'}
                 </button>
               </div>
             </div>
