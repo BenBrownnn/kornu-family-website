@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, type ChangeEvent } from 'react';
 import { useStore } from '../store/useStore';
 import {
   Shield, Users, MessageCircle, Calendar, FileText, Bell, Settings,
@@ -13,7 +13,7 @@ type DbEvent = { id: string; title: string; date: string; location: string; desc
 type DbAnnouncement = { id: string; title: string; author: string; date: string; priority: string; };
 type DbMember = {
   id: string; name: string; role: string; age?: number; bio: string; image: string;
-  generation: number; birthDate?:string | null; dateOfPassing?: string | null;
+  generation: number; birthDate?: string; dateOfPassing?: string;
   location?: string; occupation?: string; tags: string[]; marriageId?: string | null;
 };
 type Marriage = { id: string; spouse_1_id: string | null; spouse_2_id: string | null; marriage_date: string | null; status: string; };
@@ -100,7 +100,9 @@ export default function PortalPage() {
   const [postingMember, setPostingMember] = useState(false);
   const [memberFormError, setMemberFormError] = useState('');
 
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin =
+    currentUser?.role?.toLowerCase?.() === 'admin' ||
+    currentUser?.email?.toLowerCase?.() === 'admin@kornu.family';
 
   const fetchEvents = async () => {
     const { data, error } = await supabase.from('events').select('*').order('date', { ascending: true });
@@ -400,42 +402,12 @@ const buildTree = (): TreeNode[] => {
     };
   };
 
-    /* A root is a member who does not appear as somebody's child. */
+  /* A root is a member who does not appear as somebody's child. */
   const childIds = new Set(
     parentChildRelationships.map((relationship) => relationship.child_id)
   );
 
-  const rootCandidates = dbMembers.filter((member) => !childIds.has(member.id));
-  const rootCandidateIds = new Set(rootCandidates.map((member) => member.id));
-  const excludedFromRoots = new Set<string>();
-
-  marriages.forEach((marriage) => {
-    const { spouse_1_id, spouse_2_id } = marriage;
-    if (!spouse_1_id || !spouse_2_id) return;
-
-    const spouse1HasParent = childIds.has(spouse_1_id);
-    const spouse2HasParent = childIds.has(spouse_2_id);
-
-    if (spouse1HasParent && !spouse2HasParent) {
-      // spouse_2 married in (no recorded parent) — will appear nested
-      // as spouse_1's spouse, so drop them from the root list.
-      excludedFromRoots.add(spouse_2_id);
-    } else if (spouse2HasParent && !spouse1HasParent) {
-      excludedFromRoots.add(spouse_1_id);
-    } else if (
-      !spouse1HasParent &&
-      !spouse2HasParent &&
-      rootCandidateIds.has(spouse_1_id) &&
-      rootCandidateIds.has(spouse_2_id) &&
-      !excludedFromRoots.has(spouse_1_id)
-    ) {
-      // Neither has a recorded parent (e.g. the founding couple) —
-      // keep spouse_1 as the root, drop spouse_2 to avoid a duplicate tree.
-      excludedFromRoots.add(spouse_2_id);
-    }
-  });
-
-  const roots = rootCandidates.filter((member) => !excludedFromRoots.has(member.id));
+  const roots = dbMembers.filter((member) => !childIds.has(member.id));
 
   /* Keep the tree visible even if relationship data is incomplete. */
   const rootMembers =
@@ -458,14 +430,14 @@ const buildTree = (): TreeNode[] => {
     fetchParentChildRelationships();
   }, [isAuthenticated]);
 
-  const handleEventImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleEventImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
     setEventImageFile(selectedFile);
     setEventImagePreview(URL.createObjectURL(selectedFile));
   };
 
-  const handleMemberImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMemberImageChange = (e: ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
     if (!selectedFile) return;
     setMemberImageFile(selectedFile);
@@ -773,6 +745,9 @@ const buildTree = (): TreeNode[] => {
               { id: 'events', label: 'Events', icon: Calendar },
               { id: 'announcements', label: 'Announcements', icon: Bell },
               { id: 'tree', label: 'Family Tree', icon: TreePine },
+              { id: 'documents', label: 'Documents', icon: FileText },
+              { id: 'gallery', label: 'Gallery', icon: Image },
+              { id: 'settings', label: 'Settings', icon: Settings },
             ].map(({ id, label, icon: Icon }) => (
               <button
                 key={id}
@@ -813,13 +788,7 @@ const buildTree = (): TreeNode[] => {
                 {portalFeatures.map(({ id, icon: Icon, title, desc, color, count }) => (
                   <button
                     key={id}
-                    onClick={() => {
-                      if (id === 'messages') setActiveTab('messages');
-                      if (id === 'members') setActiveTab('members');
-                      if (id === 'events') setActiveTab('events');
-                      if (id === 'settings') setActiveTab('settings');
-                      if (id === 'tree') setActiveTab('tree');
-                    }}
+                    onClick={() => setActiveTab(id === 'docs' ? 'documents' : id)}
                     className="portal-card p-6 text-left group"
                   >
                     <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform duration-300 shadow-md`}>
@@ -1178,6 +1147,48 @@ const buildTree = (): TreeNode[] => {
     )}
   </div>
 )}
+
+        {activeTab === 'documents' && (
+          <div>
+            <div className="mb-6">
+              <h2 className="font-montserrat text-xl font-bold text-gray-900 flex items-center gap-2"><FileText size={20} className="text-orange-500" /> Family Documents</h2>
+              <p className="text-gray-500 text-sm mt-1">Important documents shared privately with the Kornu family.</p>
+            </div>
+            <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center">
+              <FileText size={44} className="mx-auto text-orange-300 mb-4" />
+              <h3 className="font-montserrat text-lg font-bold text-gray-900">Family Document Library</h3>
+              <p className="text-gray-500 text-sm max-w-lg mx-auto mt-2">This private area is ready for family documents. No document table has been added to Supabase yet, so no fake documents are displayed here.</p>
+              {isAdmin && <div className="mt-5 inline-flex items-center gap-2 rounded-xl bg-orange-50 text-orange-600 px-4 py-2 text-sm font-semibold"><Shield size={15} /> Administrator access</div>}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'gallery' && (
+          <div>
+            <div className="mb-6">
+              <h2 className="font-montserrat text-xl font-bold text-gray-900 flex items-center gap-2"><Image size={20} className="text-purple-500" /> Private Gallery</h2>
+              <p className="text-gray-500 text-sm mt-1">Family photos available to signed-in family members.</p>
+            </div>
+            {(() => {
+              const galleryItems = [
+                ...allMembers.filter((member) => member.image && !member.image.includes('placeholder.jpg')).map((member) => ({ id: `member-${member.id}`, image: member.image, title: member.name, subtitle: 'Family member' })),
+                ...allEvents.filter((event) => event.image).map((event) => ({ id: `event-${event.id}`, image: event.image as string, title: event.title, subtitle: 'Family event' })),
+              ];
+              if (galleryItems.length === 0) return <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-10 text-center"><Image size={44} className="mx-auto text-purple-300 mb-4" /><h3 className="font-montserrat text-lg font-bold text-gray-900">No photos yet</h3><p className="text-gray-500 text-sm mt-2">Photos uploaded through the family portal will appear here.</p></div>;
+              return <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">{galleryItems.map((item) => <div key={item.id} className="bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm card-hover"><div className="aspect-square bg-gray-100"><img src={item.image} alt={item.title} className="w-full h-full object-cover" onError={(e) => { e.currentTarget.style.display = 'none'; }} /></div><div className="p-3"><p className="font-semibold text-gray-800 text-sm truncate">{item.title}</p><p className="text-gray-400 text-xs mt-0.5">{item.subtitle}</p></div></div>)}</div>;
+            })()}
+          </div>
+        )}
+
+        {activeTab === 'settings' && (
+          <div>
+            <div className="mb-6"><h2 className="font-montserrat text-xl font-bold text-gray-900 flex items-center gap-2"><Settings size={20} className="text-gray-600" /> Settings</h2><p className="text-gray-500 text-sm mt-1">Manage your family portal account.</p></div>
+            <div className="max-w-2xl bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+              <div className="p-6 bg-gradient-to-r from-gray-50 to-orange-50"><div className="flex items-center gap-4"><div className="w-16 h-16 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center text-white text-2xl font-bold">{currentUser?.name?.charAt(0).toUpperCase() || 'F'}</div><div><h3 className="font-montserrat font-bold text-gray-900">{currentUser?.name || 'Family Member'}</h3><p className="text-gray-500 text-sm">{currentUser?.email || 'No email available'}</p><span className="inline-block mt-2 text-xs font-semibold bg-orange-100 text-orange-600 px-2.5 py-1 rounded-full">{isAdmin ? 'Administrator' : 'Family Member'}</span></div></div></div>
+              <div className="p-6 space-y-4"><div className="rounded-xl border border-gray-100 bg-gray-50 p-4"><p className="text-xs uppercase tracking-wider text-gray-400 font-semibold">Account status</p><p className="text-sm text-green-600 font-semibold mt-1">Authenticated and connected to the family portal</p></div><button onClick={logout} className="flex items-center gap-2 rounded-xl bg-red-50 border border-red-100 text-red-600 px-4 py-3 text-sm font-semibold hover:bg-red-100 transition-colors"><LogOut size={16} /> Sign Out</button></div>
+            </div>
+          </div>
+        )}
 
         {activeTab === 'events' && (
           <div>
