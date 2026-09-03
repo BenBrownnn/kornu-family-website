@@ -434,27 +434,75 @@ const buildTree = (): TreeNode[] => {
     };
   };
 
-  /* A root is a member who does not appear as somebody's child. */
-  const childIds = new Set(
-    parentChildRelationships.map((relationship) => relationship.child_id)
-  );
+  /* ==========================================================
+   FIND TRUE FAMILY ROOTS
+   ========================================================== */
 
-  const roots = dbMembers.filter((member) => !childIds.has(member.id));
+const childIds = new Set(
+  parentChildRelationships.map(
+    (relationship) => relationship.child_id
+  )
+);
 
-  /* Keep the tree visible even if relationship data is incomplete. */
-  const rootMembers =
-    roots.length > 0
-      ? roots
-      : dbMembers.filter(
-          (member, index, array) =>
-            array.findIndex((item) => item.id === member.id) === index
-        );
+/*
+ * A true root is someone who:
+ * 1. Is not recorded as another person's child.
+ * 2. Is not simply the spouse of another root.
+ *
+ * This prevents husbands/wives from creating duplicate
+ * copies of the same family tree.
+ */
 
-  return rootMembers.map((root) => buildNode(root));
-};
+const possibleRoots = dbMembers.filter(
+  (member) => !childIds.has(member.id)
+);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
+const rootSpouseIds = new Set<string>();
+
+possibleRoots.forEach((root) => {
+  marriages.forEach((marriage) => {
+    const isRootSpouse =
+      marriage.spouse_1_id === root.id
+        ? marriage.spouse_2_id
+        : marriage.spouse_2_id === root.id
+        ? marriage.spouse_1_id
+        : null;
+
+    if (
+      isRootSpouse &&
+      possibleRoots.some(
+        (candidate) => candidate.id === isRootSpouse
+      )
+    ) {
+      rootSpouseIds.add(isRootSpouse);
+    }
+  });
+});
+
+/*
+ * Remove spouses from the root list.
+ * They will still appear correctly inside the marriage
+ * of the actual root.
+ */
+const rootMembers = possibleRoots.filter(
+  (member) => !rootSpouseIds.has(member.id)
+);
+
+/*
+ * Final safety fallback:
+ * If relationship data is incomplete, show one unique root
+ * instead of rendering several duplicate trees.
+ */
+const finalRoots =
+  rootMembers.length > 0
+    ? rootMembers
+    : possibleRoots.length > 0
+    ? [possibleRoots[0]]
+    : dbMembers.length > 0
+    ? [dbMembers[0]]
+    : [];
+
+return finalRoots.map((root) => buildNode(root));
 
     fetchEvents();
     fetchAnnouncements();
