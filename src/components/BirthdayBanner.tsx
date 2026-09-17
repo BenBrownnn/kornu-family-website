@@ -64,7 +64,7 @@ export default function BirthdayBanner() {
 
   if (loading) {
     return (
-      <div className="bg-orange-500 text-white px-4 py-3 text-center">
+      <div className="bg-blue-500 text-white px-4 py-3 text-center">
         🎂 Checking today's birthdays...
       </div>
     );

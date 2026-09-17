@@ -162,7 +162,7 @@ export default function SignInPage() {
     <button
       type="button"
       onClick={() => setCurrentPage('request-access')}
-      className="text-orange-500 font-semibold hover:text-orange-600 transition-colors"
+      className="text-blue-500 font-semibold hover:text-blue-600 transition-colors"
     >
       Request Access
     </button>

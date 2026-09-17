@@ -104,7 +104,7 @@ const allMembers = [...dbMembers, ...familyMembers];
             transition={{ duration: 0.6 }}
             className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 shadow-md text-sm font-medium text-gray-600 mb-8"
           >
-            <MapPin size={14} className="text-orange-500" />
+            <MapPin size={14} className="text-blue-500" />
             Est. 1400 &bull; Ve-Gbodome, Ghana
           </motion.div>
           <motion.h1
@@ -117,7 +117,7 @@ const allMembers = [...dbMembers, ...familyMembers];
             <span
               className="inline-block"
               style={{
-                background: 'linear-gradient(90deg, #f97316 0%, #ec4899 50%, #8b5cf6 100%)',
+                background: 'linear-gradient(90deg, #023570 0%, #d0e6ff 50%, #51a2ff  100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
                 backgroundClip: 'text',
@@ -132,14 +132,14 @@ const allMembers = [...dbMembers, ...familyMembers];
           {/* Underline decoration */}
           <div className="flex justify-center mb-6">
             <svg width="320" height="12" viewBox="0 0 320 12" fill="none">
-              <path d="M0 6 Q80 12 160 6 Q240 0 320 6" stroke="#f97316" strokeWidth="3" strokeLinecap="round" fill="none" />
+              <path d="M0 6 Q80 12 160 6 Q240 0 320 6" stroke="#3956ff" strokeWidth="8" strokeLinecap="round" fill="none" />
             </svg>
           </div>
 
           {/* Subtitle */}
           <p className="text-black text-lg md:text-xl max-w-2xl mx-auto leading-relaxed mb-10 font-light">
             Where every memory is treasured, every story is celebrated, and
-            every family member is loved — always.
+            every family member is loved always.
           </p>
 
           {/* CTA Buttons */}
@@ -174,9 +174,9 @@ const allMembers = [...dbMembers, ...familyMembers];
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
             {stats.map(({ label, value, icon: Icon }, i) => (
-              <div key={i} className="text-center p-6 rounded-2xl bg-gradient-to-br from-orange-50 to-pink-50 card-hover">
-                <Icon size={28} className="text-orange-500 mx-auto mb-3" />
-                <div className="text-3xl font-black text-gray-900 font-['Montserrat']">{value}</div>
+              <div key={i} className="text-center p-6 rounded-2xl bg-gradient-to-br from-blue-100 to-purple-100 card-hover">
+                <Icon size={28} className="text-blue-500 mx-auto mb-3" />
+                <div className="text-3xl font-black text-blue-900 font-['Montserrat']">{value}</div>
                 <div className="text-sm text-gray-500 font-medium mt-1">{label}</div>
               </div>
             ))}
@@ -199,7 +199,7 @@ const allMembers = [...dbMembers, ...familyMembers];
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
                 <div className="absolute bottom-0 left-0 right-0 p-6">
                   <div className="glass-card rounded-2xl p-4">
-                    <p className="font-dancing text-2xl text-orange-500 leading-tight">
+                    <p className="font-dancing text-2xl text-blue-900 leading-tight">
                       "A family is a circle of strength and love..."
                     </p>
                     <p className="text-sm text-gray-500 mt-1">— Granpa John Lily Kornu</p>
@@ -209,7 +209,7 @@ const allMembers = [...dbMembers, ...familyMembers];
               {/* Floating badge */}
               <div className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl p-4 float-animation">
                 <div className="text-center">
-                  <div className="text-2xl font-black text-orange-500 font-['Montserrat']">78</div>
+                  <div className="text-2xl font-black text-blue-500 font-['Montserrat']">100+</div>
                   <div className="text-xs text-gray-500 font-medium">Years of<br/>Legacy</div>
                 </div>
               </div>
@@ -217,13 +217,13 @@ const allMembers = [...dbMembers, ...familyMembers];
 
             {/* Text Side */}
             <div>
-              <div className="inline-block bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
+              <div className="inline-block bg-green-100 text-green-900 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
                 Our Heritage
               </div>
               <h2 className="section-title mb-4">
                 A Family Built on<br />
                 <span style={{
-                  background: 'linear-gradient(135deg, #f97316, #8b5cf6)',
+                  background: 'linear-gradient(135deg, #023570, #51a2ff)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   backgroundClip: 'text',
@@ -234,10 +234,10 @@ const allMembers = [...dbMembers, ...familyMembers];
                 The Kornu family traces its roots to the vibrant heart of Ve-Gbodome, Ghana. Founded by Granpa John Lily Kornu and Mama Abena in 1946, our family has grown across four generations and eight countries.
               </p>
               <p className="section-subtitle mb-8">
-                From humble beginnings in a small family compound, the Kornu name has come to represent education, service, resilience, and above all — unconditional love. Our story is one of pride, perseverance, and the unbreakable bonds of family.
+                From humble beginnings in a small family compound, the Kornu name has come to represent education, service, resilience, and above all unconditional love. Our story is one of pride, perseverance, and the unbreakable bonds of family.
               </p>
               <div className="flex flex-wrap gap-3 mb-8">
-                {['Ghana 🇬🇭', 'UK 🇬🇧', 'USA 🇺🇸', 'France 🇫🇷', 'Canada 🇨🇦'].map((c) => (
+                {['Ghana 🇬🇭'].map((c) => (
                   <span key={c} className="bg-white border border-gray-200 px-4 py-1.5 rounded-full text-sm text-gray-600 shadow-sm">
                     {c}
                   </span>
@@ -260,7 +260,7 @@ const allMembers = [...dbMembers, ...familyMembers];
       <section className="py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-12">
-            <div className="inline-block bg-pink-100 text-pink-600 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
+            <div className="inline-block bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
               Our People
             </div>
             <h2 className="section-title mb-3">Meet the Family</h2>
@@ -323,7 +323,7 @@ const allMembers = [...dbMembers, ...familyMembers];
 
         <div className="relative z-10 max-w-6xl mx-auto px-4">
           <div className="text-center mb-12">
-            <div className="inline-block bg-orange-500/20 text-orange-400 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
+            <div className="inline-block bg-blue-500/20 text-blue-400 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
               What's Coming
             </div>
             <h2 className="section-title !text-white/90 mt-4 max-w-xl mx-auto">Upcoming Events</h2>
@@ -353,8 +353,8 @@ const allMembers = [...dbMembers, ...familyMembers];
                 </div>
                 <h3 className="font-bold text-white font-['Montserrat'] text-lg leading-tight mb-2">{event.title}</h3>
                 <div className="flex items-center gap-1.5 mb-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-orange-400" />
-                  <span className="text-orange-400 text-sm font-medium">{formatDate(event.date)}</span>
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                  <span className="text-blue-400 text-sm font-medium">{formatDate(event.date)}</span>
                 </div>
                 <div className="flex items-center gap-1.5 mb-3">
                   <MapPin size={12} className="text-gray-400" />
@@ -365,8 +365,8 @@ const allMembers = [...dbMembers, ...familyMembers];
                   onClick={() => handleRSVP(event.id)}
                   className={`mt-4 w-full py-2 rounded-xl text-sm font-medium transition-all duration-300 border ${
                     rsvpedEvents.includes(event.id)
-                      ? 'bg-orange-500 text-white border-orange-500'
-                      : 'border-orange-500/40 text-orange-400 hover:bg-orange-500 hover:text-white'
+                      ? 'bg-blue-500 text-white border-blue-500'
+                      : 'border-blue-500/40 text-blue-400 hover:bg-blue-500 hover:text-white'
                   }`}
                 >
                   {!isAuthenticated
@@ -427,12 +427,12 @@ const allMembers = [...dbMembers, ...familyMembers];
                   </div>
                   <h3 className="font-bold text-gray-900 font-['Montserrat'] text-lg leading-snug mb-3 line-clamp-2">{story.title}</h3>
                   <div className="flex items-start gap-2 mb-3">
-                    <Quote size={14} className="text-orange-400 mt-0.5 flex-shrink-0" />
+                    <Quote size={14} className="text-blue-400 mt-0.5 flex-shrink-0" />
                     <p className="text-gray-500 text-sm leading-relaxed line-clamp-3">{story.excerpt}</p>
                   </div>
                   <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                     <div className="flex items-center gap-2">
-                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                      <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
                         {story.author.charAt(0)}
                       </div>
                       <div>
@@ -463,7 +463,7 @@ const allMembers = [...dbMembers, ...familyMembers];
       <section className="py-20 bg-gradient-to-br from-orange-50 to-pink-50/30">
         <div className="max-w-6xl mx-auto px-4">
           <div className="text-center mb-12">
-            <div className="inline-block bg-orange-100 text-orange-600 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
+            <div className="inline-block bg-orange-100 text-#B5502F-600 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
               Photo Album
             </div>
             <h2 className="section-title mb-3">Memories in Photos</h2>
@@ -509,9 +509,9 @@ const allMembers = [...dbMembers, ...familyMembers];
               alt="Family Portal"
               className="absolute inset-0 w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-gray-900/90 via-gray-900/80 to-orange-900/70" />
+            <div className="absolute inset-0 bg-gradient-to-r from-gray-900/90 via-gray-900/80 to-blue-900/70" />
             <div className="relative z-10 p-12 text-center">
-              <Shield size={48} className="text-orange-400 mx-auto mb-4" />
+              <Shield size={48} className="text-blue-400 mx-auto mb-4" />
               <h2 className="font-['Montserrat'] text-4xl font-bold text-white mb-4">
                 Join the Family Portal
               </h2>
@@ -557,7 +557,7 @@ const allMembers = [...dbMembers, ...familyMembers];
                 </div>
                 <div>
                   <div className="font-bold text-lg font-'Montserrat'">The Kornu Family</div>
-                  <div className="text-orange-400 text-xs uppercase tracking-widest">Est. 1946 · Ve-Gbodome, Ghana</div>
+                  <div className="text-blue-400 text-xs uppercase tracking-widest">Est. 1946 · Ve-Gbodome, Ghana</div>
                 </div>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
@@ -573,7 +573,7 @@ const allMembers = [...dbMembers, ...familyMembers];
                   <li key={link}>
                     <button
                       onClick={() => handleNav(link.toLowerCase().replace('our ', ''))}
-                      className="text-gray-400 hover:text-orange-400 text-sm transition-colors"
+                      className="text-gray-400 hover:text-blue-400 text-sm transition-colors"
                     >
                       {link}
                     </button>
@@ -591,7 +591,7 @@ const allMembers = [...dbMembers, ...familyMembers];
                 <li className="pt-2">
                   <button
                     onClick={() => handleNav('signin')}
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-xs font-semibold transition-colors"
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-semibold transition-colors"
                   >
                     Sign In to Portal
                   </button>
@@ -604,9 +604,7 @@ const allMembers = [...dbMembers, ...familyMembers];
             <p className="text-gray-500 text-sm">
               © 2025 The Kornu Family Website. All rights reserved. Made with for our family.
             </p>
-            <p className="text-gray-600 text-xs">
-              "A family is a circle of strength and love" — Granpa John Lily Kornu
-            </p>
+           
           </div>
         </div>
       </footer>

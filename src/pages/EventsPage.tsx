@@ -1,24 +1,36 @@
 
 import { familyEvents } from '../data/familyData';
-import { Calendar, MapPin, Users, Clock, CheckCircle, Bell } from 'lucide-react';
+import {
+  Calendar,
+  MapPin,
+  Users,
+  Clock,
+  CheckCircle,
+  Bell,
+  Cake,
+  PartyPopper,
+  Bird,
+  Heart,
+  type LucideIcon,
+} from 'lucide-react';
 import { useStore } from '@/store/useStore';
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 const eventTypeColors: Record<string, { bg: string; text: string; border: string }> = {
-  reunion: { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-200' },
-  birthday: { bg: 'bg-pink-100', text: 'text-pink-700', border: 'border-pink-200' },
-  celebration: { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-200' },
-  memorial: { bg: 'bg-blue-100', text: 'text-blue-700', border: 'border-blue-200' },
-  wedding: { bg: 'bg-red-100', text: 'text-red-700', border: 'border-red-200' },
+  reunion: { bg: 'bg-[#d0e6ff]', text: 'text-[#023570]', border: 'border-[#d0e6ff]' },
+  birthday: { bg: 'bg-[#F2D7CE]', text: 'text-[#8F3E23]', border: 'border-[#D9A491]' },
+  celebration: { bg: 'bg-[#DCE7DC]', text: 'text-[#3D5A3D]', border: 'border-[#AFC4AF]' },
+  memorial: { bg: 'bg-[#E9DED2]', text: 'text-[#3A2E24]', border: 'border-[#CDBBAA]' },
+  wedding: { bg: 'bg-[#DCE7DC]', text: 'text-[#3D5A3D]', border: 'border-[#AFC4AF]' },
 };
 
-const eventTypeIcons: Record<string, string> = {
-  reunion: '🎉',
-  birthday: '🎂',
-  celebration: '🥂',
-  memorial: '🕊️',
-  wedding: '💍',
+const eventTypeIcons: Record<string, LucideIcon> = {
+  reunion: PartyPopper,
+  birthday: Cake,
+  celebration: PartyPopper,
+  memorial: Bird,
+  wedding: Heart,
 };
 
 type Attendee = {
@@ -202,8 +214,8 @@ export default function EventsPage() {
     <div className="min-h-screen bg-gray-50">
 
       {/* Header */}
-      <div className="pt-24 pb-12 bg-gradient-to-r from-gray-900 via-gray-800 to-purple-900 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
+      <div className="pt-24 pb-12 bg-[#023570] relative overflow-hidden">
+        <div className="absolute inset-0 opacity-27">
           <img
             src="/images/family-gathering.jpg"
             alt=""
@@ -212,7 +224,7 @@ export default function EventsPage() {
         </div>
 
         <div className="relative z-10 max-w-6xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 bg-purple-500/20 text-purple-300 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
+          <div className="inline-flex items-center gap-2 bg-blue-500/20 text-blue-300 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
             <Calendar size={14} />
             Family Calendar
           </div>
@@ -237,12 +249,14 @@ export default function EventsPage() {
               onClick={() => setActiveFilter(type)}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
                 activeFilter === type
-                  ? 'bg-gradient-to-r from-orange-500 to-purple-600 text-white shadow-md'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-orange-300'
+                  ? 'bg-[#023570] text-white shadow-md'
+                  : 'bg-[#FAF5EE] text-[##023570] border border-[#023570] hover:border-[#51a2ff]'
               }`}
             >
-              {type !== 'All' &&
-                eventTypeIcons[type.toLowerCase()]}{' '}
+              {type !== 'All' && (() => {
+                const Icon = eventTypeIcons[type.toLowerCase()];
+                return Icon ? <Icon size={14} /> : null;
+              })()}{' '}
               {type}
             </button>
           ))}
@@ -256,7 +270,7 @@ export default function EventsPage() {
               <div key={month} className="mb-10">
 
                 {/* Month Heading */}
-                <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-widest mb-4">
+                <h3 className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-4">
                   {month}
                 </h3>
 
@@ -280,8 +294,8 @@ export default function EventsPage() {
                         <div className="flex">
 
                           {/* Date Column */}
-                          <div className="flex-shrink-0 w-24 bg-gradient-to-b from-orange-500 to-orange-600 flex flex-col items-center justify-center text-white py-6">
-                            <div className="text-xs font-semibold uppercase tracking-widest opacity-80">
+                          <div className="flex-shrink-0 w-24 bg-[#023570] flex flex-col items-center justify-center text-white py-6">
+                            <div className="text-xs font-semibold uppercase tracking-widest opacity-90">
                               {dateInfo.month}
                             </div>
 
@@ -305,7 +319,10 @@ export default function EventsPage() {
                                   <span
                                     className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colors.bg} ${colors.text}`}
                                   >
-                                    {eventTypeIcons[event.type] || '📅'}{' '}
+                                    {(() => {
+                                      const Icon = eventTypeIcons[event.type] || Calendar;
+                                      return <Icon size={13} className="mr-1 inline" />;
+                                    })()}{' '}
                                     {event.type.charAt(0).toUpperCase() +
                                       event.type.slice(1)}
                                   </span>
@@ -315,8 +332,8 @@ export default function EventsPage() {
                                       daysUntil === 'Past'
                                         ? 'bg-gray-100 text-gray-500'
                                         : daysUntil.includes('!')
-                                        ? 'bg-green-100 text-green-600'
-                                        : 'bg-blue-50 text-blue-600'
+                                        ? 'bg-[#DCE7DC] text-[#3D5A3D]'
+                                        : 'bg-[#E9DED2] text-[#8F3E23]'
                                     }`}
                                   >
                                     <Clock
@@ -337,7 +354,7 @@ export default function EventsPage() {
                                   <div className="flex items-center gap-1.5">
                                     <Calendar
                                       size={14}
-                                      className="text-orange-400"
+                                      className="text-blue-400"
                                     />
                                     {dateInfo.full}
                                   </div>
@@ -345,7 +362,7 @@ export default function EventsPage() {
                                   <div className="flex items-center gap-1.5">
                                     <MapPin
                                       size={14}
-                                      className="text-orange-400"
+                                      className="text-blue-400"
                                     />
                                     {event.location}
                                   </div>
@@ -383,10 +400,10 @@ export default function EventsPage() {
 
                               <button
                                 onClick={() => handleRSVP(event.id)}
-                                className={`flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-semibold transition-all ${
+                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
                                   hasRsvped
-                                    ? 'bg-green-100 text-green-700 border border-green-200'
-                                    : 'bg-gradient-to-r from-gray-800 to-gray-600 text-white shadow-md hover:shadow-lg'
+                                    ? 'bg-[#DCE7DC] text-[#3D5A3D] border border-[#023570]'
+                                    : 'bg-[#023570] text-white shadow-md hover:bg-[#51a2ff]'
                                 }`}
                               >
                                 {!isAuthenticated ? (
@@ -411,10 +428,10 @@ export default function EventsPage() {
                                 onClick={() =>
                                   toggleReminder(event.id)
                                 }
-                                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full text-sm transition-all ${
+                                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm transition-all ${
                                   reminders[event.id]
-                                    ? 'bg-orange-50 text-orange-500 border border-orange-300'
-                                    : 'text-gray-500 border border-gray-200 hover:border-orange-300 hover:text-orange-500'
+                                    ? 'bg-[#F1E1B8] text-[#8F3E23] border border-[#023570]'
+                                    : 'text-[#023570] border border-[#023570] hover:border-[#51a2ff] hover:text-[#51a2ff]'
                                 }`}
                               >
                                 <Bell
@@ -436,7 +453,7 @@ export default function EventsPage() {
                                   onClick={() =>
                                     toggleAttendeesList(event.id)
                                   }
-                                  className="text-sm text-gray-400 hover:text-orange-500 underline underline-offset-2 ml-auto"
+                                  className="text-sm text-gray-400 hover:text-blue-500 underline underline-offset-2 ml-auto"
                                 >
                                   {expandedEvent === event.id
                                     ? 'Hide attendees'
@@ -461,9 +478,9 @@ export default function EventsPage() {
                                       (person, i) => (
                                         <span
                                           key={i}
-                                          className="flex items-center gap-1.5 bg-gray-100 text-gray-700 text-xs px-3 py-1.5 rounded-full"
+                                          className="flex items-center gap-1.5 bg-[#E9DED2] text-[#3A2E24] text-xs px-3 py-1.5 rounded-lg"
                                         >
-                                          <span className="w-5 h-5 rounded-full bg-orange-400 text-white flex items-center justify-center font-bold text-[10px]">
+                                          <span className="w-5 h-5 rounded-full bg-[#B5502F] text-white flex items-center justify-center font-bold text-[10px]">
                                             {person.name.charAt(0)}
                                           </span>
 
@@ -510,7 +527,7 @@ export default function EventsPage() {
         )}
 
         {/* Add Event CTA */}
-        <div className="mt-16 bg-gray-900 rounded-3xl p-8 text-white text-center">
+          <div className="mt-16 bg-[#101828] rounded-3xl p-8 text-white text-center">
 
           <h2 className="font-montserrat text-2xl font-bold mb-3">
             Have a family event to share?
@@ -528,7 +545,7 @@ export default function EventsPage() {
                 behavior: 'smooth',
               });
             }}
-            className="bg-white text-orange-600 px-8 py-3 rounded-full font-bold hover:bg-orange-50 transition-colors"
+            className="bg-[#023570] text-[white] px-8 py-3 rounded-xl font-bold hover:bg-[#51a2ff] transition-colors"
           >
             Submit an Event
           </button>
@@ -537,7 +554,7 @@ export default function EventsPage() {
       </div>
 
       {/* FOOTER */}
-      <footer className="bg-gray-900 text-white py-16">
+        <footer className="bg-[#101828] text-white py-16">
 
         <div className="max-w-6xl mx-auto px-4">
 
@@ -571,14 +588,14 @@ export default function EventsPage() {
                     The Kornu Family
                   </div>
 
-                  <div className="text-orange-400 text-xs uppercase tracking-widest">
+                  <div className="text-blue-400 text-xs uppercase tracking-widest">
                     Est. 1946 · Ve-Gbodome, Ghana
                   </div>
                 </div>
 
               </div>
 
-              <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
+              <p className="text-white-400 text-sm leading-relaxed max-w-sm">
                 Where every memory is treasured, every story is celebrated, and every family member is loved — always.
               </p>
 
@@ -587,7 +604,7 @@ export default function EventsPage() {
             {/* Quick Links */}
             <div>
 
-              <h4 className="font-semibold text-sm uppercase tracking-widest text-gray-400 mb-4">
+              <h4 className="font-semibold text-sm uppercase tracking-widest text-white-400 mb-4">
                 Explore
               </h4>
 
@@ -612,7 +629,7 @@ export default function EventsPage() {
                             .replace('our ', '')
                         )
                       }
-                      className="text-gray-400 hover:text-orange-400 text-sm transition-colors"
+                      className="text-gray-400 hover:text-blue-400 text-sm transition-colors"
                     >
                       {link}
                     </button>
@@ -642,7 +659,7 @@ export default function EventsPage() {
 
                   <button
                     onClick={() => handleNav('signin')}
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-xs font-semibold transition-colors"
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-semibold transition-colors"
                   >
                     Sign In to Portal
                   </button>
@@ -661,9 +678,6 @@ export default function EventsPage() {
               © 2025 The Kornu Family Website. All rights reserved. Made with for our family.
             </p>
 
-            <p className="text-gray-600 text-xs">
-              "A family is a circle of strength and love" — Granpa John Lily Kornu
-            </p>
 
           </div>
 

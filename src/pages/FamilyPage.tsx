@@ -9,6 +9,8 @@ import {
   BookOpen,
   Sprout,
   ChevronDown,
+  X,
+  Bird,
 } from 'lucide-react';
 import { supabase } from '../lib/supabaseClient';
 
@@ -32,33 +34,33 @@ const GENERATION_META: Record<
 > = {
   1: {
     label: 'Founders',
-    badge: 'bg-amber-600',
-    accent: 'text-amber-600',
+    badge: 'bg-[#C89B3C]',
+    accent: 'text-[#8F3E23]',
   },
   2: {
     label: 'Parents',
-    badge: 'bg-rose-600',
-    accent: 'text-rose-600',
+    badge: 'bg-[#B5502F]',
+    accent: 'text-[#B5502F]',
   },
   3: {
     label: 'Grandchildren',
-    badge: 'bg-sky-600',
-    accent: 'text-sky-600',
+    badge: 'bg-[#3D5A3D]',
+    accent: 'text-[#3D5A3D]',
   },
   4: {
     label: 'Great-Grandchildren',
-    badge: 'bg-emerald-600',
-    accent: 'text-emerald-600',
+    badge: 'bg-[#3D5A3D]',
+    accent: 'text-[#3D5A3D]',
   },
   5: {
     label: 'Great-Great-Grandchildren',
-    badge: 'bg-violet-600',
-    accent: 'text-violet-600',
+    badge: 'bg-[#B5502F]',
+    accent: 'text-[#B5502F]',
   },
   6: {
     label: 'Great-Great-Great-Grandchildren',
-    badge: 'bg-cyan-600',
-    accent: 'text-cyan-600',
+    badge: 'bg-[#3D5A3D]',
+    accent: 'text-[#3D5A3D]',
   },
 };
 
@@ -217,6 +219,21 @@ export default function FamilyPage() {
     (member) => member.id === selected
   );
 
+  useEffect(() => {
+    if (!selectedMember) return;
+
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setSelected(null);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+
+    return () =>
+      window.removeEventListener('keydown', handleEscape);
+  }, [selectedMember]);
+
   // ============================================================
   // IMAGE ERROR
   // ============================================================
@@ -343,13 +360,13 @@ export default function FamilyPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FAF5EE]">
 
       {/* ========================================================
           HEADER
       ======================================================== */}
 
-      <div className="pt-24 pb-12 bg-gray-900 relative overflow-hidden">
+      <div className="pt-24 pb-12 bg-[#2B2019] relative overflow-hidden">
 
         <div className="absolute inset-0 opacity-10">
           <img
@@ -406,7 +423,7 @@ export default function FamilyPage() {
               return (
                 <div
                   key={gen}
-                  className="bg-white border border-gray-200 rounded-2xl overflow-hidden"
+                  className="bg-[#FAF5EE] border border-[#D8CBBE] rounded-2xl overflow-hidden"
                 >
 
                   <button
@@ -452,8 +469,7 @@ export default function FamilyPage() {
 
                           <div
                             key={member.id}
-                            className="member-card cursor-pointer group"
-                            onClick={() =>
+className="member-card cursor-pointer group"                            onClick={() =>
                               setSelected(
                                 member.id === selected
                                   ? null
@@ -482,7 +498,8 @@ export default function FamilyPage() {
                                 <div className="absolute top-3 left-3">
 
                                   <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-900/80 text-white">
-                                    🕊️ In Memory
+                                    <Bird size={12} aria-hidden="true" />
+                                    In Memory
                                   </span>
 
                                 </div>
@@ -535,8 +552,6 @@ export default function FamilyPage() {
                               >
                                 {member.role}
                               </p>
-
-                              {/* TAGS */}
 
                               {member.tags.length > 0 && (
 
@@ -618,7 +633,7 @@ export default function FamilyPage() {
                 }
                 className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   genFilter === generation
-                    ? 'bg-gray-900 text-white'
+                    ? 'bg-blue-900 text-white'
                     : 'bg-white text-gray-600 border border-gray-200 hover:border-gray-300'
                 }`}
               >
@@ -699,7 +714,8 @@ export default function FamilyPage() {
                     {member.dateOfPassing && (
 
                       <span className="text-xs font-semibold px-2 py-1 rounded-full bg-gray-900/80 text-white flex items-center gap-1">
-                        🕊️ Blessed Memory
+                        <Bird size={12} aria-hidden="true" />
+                        Blessed Memory
                       </span>
 
                     )}
@@ -824,7 +840,6 @@ export default function FamilyPage() {
                 </div>
 
               </div>
-
             );
           })}
 
@@ -836,32 +851,80 @@ export default function FamilyPage() {
 
         {selectedMember && (
 
-          <div className="mt-12 bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+            onMouseDown={(event) => {
+              if (event.target === event.currentTarget) {
+                setSelected(null);
+              }
+            }}
+            role="presentation"
+          >
 
-            <div className="grid md:grid-cols-2 gap-8 p-8">
+            <div
+              className="max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-2xl border border-gray-200 bg-white shadow-2xl animate-[fadeIn_0.2s_ease-out]"
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="family-member-detail-title"
+            >
 
-              <div>
+              <button
+                type="button"
+                onClick={() => setSelected(null)}
+                className="absolute right-6 top-6 z-10 rounded-full bg-white/90 p-2 text-gray-500 shadow-sm transition hover:bg-white hover:text-gray-900"
+                aria-label="Close member details"
+              >
+                <X size={20} />
+              </button>
 
-                <img
-                  src={
-                    selectedMember.image ||
-                    '/images/placeholder.jpg'
-                  }
-                  alt={selectedMember.name}
-                  className="w-full rounded-xl object-cover aspect-square"
-                  onError={
-                    handleImageError
-                  }
-                />
+              <div className="grid md:grid-cols-2 gap-8 p-8">
 
-              </div>
+                <div>
 
-              <div>
+                  <img
+                    src={
+                      selectedMember.image ||
+                      '/images/placeholder.jpg'
+                    }
+                    alt={selectedMember.name}
+                    className="w-full rounded-xl object-cover aspect-square"
+                    onError={
+                      handleImageError
+                    }
+                  />
 
-                <div className="mb-2">
+                </div>
 
-                  <span
-                    className={`text-xs font-semibold px-3 py-1 rounded-full text-white ${
+                <div>
+
+                  <div className="mb-2">
+
+                    <span
+                      className={`text-xs font-semibold px-3 py-1 rounded-full text-white ${
+                        (
+                          GENERATION_META[
+                            Number(
+                              selectedMember.generation
+                            )
+                          ] ||
+                          GENERATION_META[1]
+                        ).badge
+                      }`}
+                    >
+                      Generation {selectedMember.generation}
+                    </span>
+
+                  </div>
+
+                  <h2
+                    id="family-member-detail-title"
+                    className="font-montserrat text-4xl font-bold text-gray-900 mb-1"
+                  >
+                    {selectedMember.name}
+                  </h2>
+
+                  <p
+                    className={`text-lg font-medium ${
                       (
                         GENERATION_META[
                           Number(
@@ -869,103 +932,154 @@ export default function FamilyPage() {
                           )
                         ] ||
                         GENERATION_META[1]
-                      ).badge
-                    }`}
+                      ).accent
+                    } mb-6`}
                   >
-                    Generation {selectedMember.generation}
-                  </span>
+                    {selectedMember.role}
+                  </p>
 
-                </div>
+                  <div className="space-y-3 mb-8">
 
-                <h2 className="font-montserrat text-4xl font-bold text-gray-900 mb-1">
-                  {selectedMember.name}
-                </h2>
+                    {/* LOCATION */}
 
-                <p
-                  className={`text-lg font-medium ${
-                    (
-                      GENERATION_META[
-                        Number(
-                          selectedMember.generation
-                        )
-                      ] ||
-                      GENERATION_META[1]
-                    ).accent
-                  } mb-6`}
-                >
-                  {selectedMember.role}
-                </p>
+                    {selectedMember.location && (
 
-                <div className="space-y-3 mb-8">
+                      <div className="flex items-center gap-2">
 
-                  {/* LOCATION */}
+                        <MapPin
+                          size={18}
+                          className="text-gray-400"
+                        />
 
-                  {selectedMember.location && (
+                        <span className="text-gray-700">
+                          {selectedMember.location}
+                        </span>
 
-                    <div className="flex items-center gap-2">
+                      </div>
 
-                      <MapPin
-                        size={18}
-                        className="text-gray-400"
-                      />
+                    )}
 
-                      <span className="text-gray-700">
-                        {selectedMember.location}
-                      </span>
+                    {/* DATES */}
 
-                    </div>
+                    {(
+                      selectedMember.birthDate ||
+                      selectedMember.dateOfPassing
+                    ) && (
 
-                  )}
+                      <div className="flex items-start gap-2">
 
-                  {/* DATES */}
+                        <span className="text-gray-400 text-lg">
+                          📅
+                        </span>
 
-                  {(
-                    selectedMember.birthDate ||
-                    selectedMember.dateOfPassing
-                  ) && (
+                        <div className="text-gray-700">
 
-                    <div className="flex items-start gap-2">
+                          {selectedMember.birthDate && (
 
-                      <span className="text-gray-400 text-lg">
-                        📅
-                      </span>
+                            <div>
 
-                      <div className="text-gray-700">
+                              <span className="font-medium">
+                                Born:
+                              </span>{' '}
 
-                        {selectedMember.birthDate && (
+                              {formatDate(
+                                selectedMember.birthDate
+                              )}
 
-                          <div>
+                            </div>
 
-                            <span className="font-medium">
-                              Born:
-                            </span>{' '}
+                          )}
 
-                            {formatDate(
-                              selectedMember.birthDate
-                            )}
+                          {selectedMember.dateOfPassing && (
 
-                          </div>
+                            <div>
 
-                        )}
+                              <span className="font-medium">
+                                Passed:
+                              </span>{' '}
 
-                        {selectedMember.dateOfPassing && (
+                              {formatDate(
+                                selectedMember.dateOfPassing
+                              )}
 
-                          <div>
+                              <span className="ml-2 text-sm text-gray-400 italic">
+                                In loving memory
+                              </span>
 
-                            <span className="font-medium">
-                              Passed:
-                            </span>{' '}
+                            </div>
 
-                            {formatDate(
-                              selectedMember.dateOfPassing
-                            )}
+                          )}
 
-                            <span className="ml-2 text-sm text-gray-400 italic">
-                              In loving memory
+                        </div>
+
+                      </div>
+
+                    )}
+
+                    {/* OCCUPATION */}
+
+                    {selectedMember.occupation && (
+
+                      <div>
+
+                        <p className="text-gray-600 mb-2 font-medium">
+                          Occupation
+                        </p>
+
+                        <p className="text-gray-900">
+                          {selectedMember.occupation}
+                        </p>
+
+                      </div>
+
+                    )}
+
+                    {/* BIO */}
+
+                    {selectedMember.bio && (
+
+                      <div>
+
+                        <p className="text-gray-600 mb-2 font-medium">
+                          About
+                        </p>
+
+                        <p className="text-gray-900 leading-relaxed">
+                          {selectedMember.bio}
+                        </p>
+
+                      </div>
+
+                    )}
+
+                  </div>
+
+                  {/* TAGS */}
+
+                  {selectedMember.tags.length > 0 && (
+
+                    <div>
+
+                      <p className="text-gray-600 mb-3 font-medium">
+                        Interests
+                      </p>
+
+                      <div className="flex flex-wrap gap-2">
+
+                        {selectedMember.tags.map(
+                          (
+                            tag,
+                            index
+                          ) => (
+
+                            <span
+                              key={`${selectedMember.id}-detail-tag-${index}-${tag}`}
+                              className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm"
+                            >
+                              {tag}
                             </span>
 
-                          </div>
-
+                          )
                         )}
 
                       </div>
@@ -974,77 +1088,7 @@ export default function FamilyPage() {
 
                   )}
 
-                  {/* OCCUPATION */}
-
-                  {selectedMember.occupation && (
-
-                    <div>
-
-                      <p className="text-gray-600 mb-2 font-medium">
-                        Occupation
-                      </p>
-
-                      <p className="text-gray-900">
-                        {selectedMember.occupation}
-                      </p>
-
-                    </div>
-
-                  )}
-
-                  {/* BIO */}
-
-                  {selectedMember.bio && (
-
-                    <div>
-
-                      <p className="text-gray-600 mb-2 font-medium">
-                        About
-                      </p>
-
-                      <p className="text-gray-900 leading-relaxed">
-                        {selectedMember.bio}
-                      </p>
-
-                    </div>
-
-                  )}
-
                 </div>
-
-                {/* TAGS */}
-
-                {selectedMember.tags.length > 0 && (
-
-                  <div>
-
-                    <p className="text-gray-600 mb-3 font-medium">
-                      Interests
-                    </p>
-
-                    <div className="flex flex-wrap gap-2">
-
-                      {selectedMember.tags.map(
-                        (
-                          tag,
-                          index
-                        ) => (
-
-                          <span
-                            key={`${selectedMember.id}-detail-tag-${index}-${tag}`}
-                            className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm"
-                          >
-                            {tag}
-                          </span>
-
-                        )
-                      )}
-
-                    </div>
-
-                  </div>
-
-                )}
 
               </div>
 
@@ -1085,7 +1129,7 @@ export default function FamilyPage() {
 
                   <div
                     key={index}
-                    className="bg-white border border-gray-200 rounded-2xl p-6 text-center hover:shadow-lg transition-shadow"
+                    className="bg-[#FAF5EE] border border-[#51a2ff] rounded-2xl p-6 text-center hover:shadow-lg transition-shadow"
                   >
 
                     <div className="inline-block bg-gray-100 p-3 rounded-full mb-4">
@@ -1165,7 +1209,7 @@ export default function FamilyPage() {
                     The Kornu Family
                   </div>
 
-                  <div className="text-orange-400 text-xs uppercase tracking-widest">
+                  <div className="text-blue-400 text-xs uppercase tracking-widest">
                     Est. 1946 · Ve-Gbodome, Ghana
                   </div>
 
@@ -1213,7 +1257,7 @@ export default function FamilyPage() {
                             )
                         )
                       }
-                      className="text-gray-400 hover:text-orange-400 text-sm transition-colors"
+                      className="text-gray-400 hover:text-blue-400 text-sm transition-colors"
                     >
                       {link}
                     </button>
@@ -1252,7 +1296,7 @@ export default function FamilyPage() {
                         'signin'
                       )
                     }
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-xs font-semibold transition-colors"
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-semibold transition-colors"
                   >
                     Sign In to Portal
                   </button>
@@ -1272,10 +1316,6 @@ export default function FamilyPage() {
               Made with for our family.
             </p>
 
-            <p className="text-gray-600 text-xs">
-              "A family is a circle of strength and love" —
-              Granpa John Lily Kornu
-            </p>
 
           </div>
 
@@ -1286,4 +1326,3 @@ export default function FamilyPage() {
     </div>
   );
 }
-

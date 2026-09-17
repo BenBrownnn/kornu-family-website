@@ -128,17 +128,22 @@ export default function StoriesPage() {
 
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="pt-24 pb-12 bg-gradient-to-r from-gray-900 via-purple-900 to-gray-900 relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <img src="/images/family-tree.jpg" alt="" className="w-full h-full object-cover" />
-        </div>
-        <div className="relative z-10 max-w-6xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 bg-purple-500/20 text-purple-300 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
-            <BookOpen size={14} />
-            Family Stories
-          </div>
+    <div className="min-h-screen bg-[#FAF5EE]">
+  {/* Header */}
+  <div className="pt-24 pb-12 bg-[#2E1065] relative overflow-hidden">
+    <div className="absolute inset-0 opacity-10">
+      <img
+        src="/images/family-tree.jpg"
+        alt=""
+        className="w-full h-full object-cover"
+      />
+    </div>
+
+    <div className="relative z-10 max-w-6xl mx-auto px-4 text-center">
+      <div className="inline-flex items-center gap-2 bg-[#6A1B9A] text-[#E9D5FF] px-4 py-1.5 rounded-xl text-sm font-semibold mb-4">
+        <BookOpen size={14} />
+        Family Stories
+      </div>
           <h1 className="font-montserrat text-5xl font-bold text-white mb-4">Stories Worth Telling</h1>
           <p className="text-gray-300 text-lg max-w-2xl mx-auto">
             Our history lives in the stories we share. Every tale told keeps the Kornu spirit alive for future generations.
@@ -155,8 +160,8 @@ export default function StoriesPage() {
               onClick={() => setActiveTag(tag)}
               className={`px-4 py-2 rounded-full text-sm font-medium transition-all flex items-center gap-1.5 ${
                 activeTag === tag
-                  ? 'bg-gradient-to-r from-purple-500 to-orange-500 text-white shadow-md'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-purple-300'
+                  ? 'bg-[#023570] text-white shadow-md'
+                  : 'bg-[#FAF5EE] text-[#023570] border border-[#023570] hover:border-[#51a2ff]'
               }`}
             >
               {tag !== 'All' && <Tag size={11} />}
@@ -168,7 +173,7 @@ export default function StoriesPage() {
         {/* Featured Story */}
         {filtered.length > 0 && (
           <div
-            className="bg-white rounded-3xl shadow-lg overflow-hidden mb-8 cursor-pointer card-hover group"
+            className="bg-[#FAF5EE] rounded-3xl shadow-lg overflow-hidden mb-8 cursor-pointer card-hover group"
             onClick={() => setSelected(filtered[0].id)}
           >
             {filtered[0].image && (
@@ -183,19 +188,19 @@ export default function StoriesPage() {
             <div className="p-8">
               <div className="flex gap-2 mb-4 flex-wrap">
                 {(filtered[0].tags || []).map((tag: string) => (
-                  <span key={tag} className="bg-purple-100 text-purple-700 text-xs px-3 py-1 rounded-full font-medium">
+                  <span key={tag} className="bg-[#DCE7DC] text-[#3D5A3D] text-xs px-3 py-1 rounded-lg font-medium">
                     {tag}
                   </span>
                 ))}
               </div>
               <h2 className="font-montserrat text-3xl font-bold text-gray-900 mb-4">{filtered[0].title}</h2>
               <div className="flex items-start gap-3 mb-4">
-                <Quote size={20} className="text-orange-400 mt-1 flex-shrink-0" />
+                <Quote size={20} className="text-purple-400 mt-1 flex-shrink-0" />
                 <p className="text-gray-500 text-base leading-relaxed italic">{filtered[0].excerpt}</p>
               </div>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-sm font-bold">
+                  <div className="w-9 h-9 rounded-full bg-[#3B0764] flex items-center justify-center text-white text-sm font-bold">
                     {filtered[0].author?.charAt(0) || '?'}
                   </div>
                   <div>
@@ -210,7 +215,7 @@ export default function StoriesPage() {
                   <span className="flex items-center gap-1.5 text-sm text-gray-400">
                     <MessageCircle size={14} /> {filtered[0].comments}
                   </span>
-                  <button className="text-orange-500 text-sm font-semibold flex items-center gap-1">
+                  <button className="text-purple-500 text-sm font-semibold flex items-center gap-1">
                     Read Full Story <ArrowRight size={14} />
                   </button>
                 </div>
@@ -224,7 +229,7 @@ export default function StoriesPage() {
           {filtered.slice(1).map((story) => (
             <div
               key={story.id}
-              className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden card-hover cursor-pointer group"
+              className="bg-[#FAF5EE] rounded-2xl shadow-sm border border-[#D8CBBE] overflow-hidden card-hover cursor-pointer group"
               onClick={() => setSelected(story.id)}
             >
               {story.image && (
@@ -239,7 +244,7 @@ export default function StoriesPage() {
               <div className="p-6">
                 <div className="flex gap-2 mb-3 flex-wrap">
                   {(story.tags || []).slice(0, 2).map((tag: string) => (
-                    <span key={tag} className="bg-orange-50 text-orange-600 text-xs px-2.5 py-1 rounded-full font-medium">
+                    <span key={tag} className="bg-[#F2D7CE] text-[#8F3E23] text-xs px-2.5 py-1 rounded-lg font-medium">
                       {tag}
                     </span>
                   ))}
@@ -248,7 +253,7 @@ export default function StoriesPage() {
                 <p className="text-gray-500 text-sm leading-relaxed line-clamp-3 mb-4">{story.excerpt}</p>
                 <div className="flex items-center justify-between pt-4 border-t border-gray-100">
                   <div className="flex items-center gap-2">
-                    <div className="w-7 h-7 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-7 h-7 rounded-full bg-[#3B0764] flex items-center justify-center text-white text-xs font-bold">
                       {story.author?.charAt(0) || '?'}
                     </div>
                     <div>
@@ -284,9 +289,9 @@ export default function StoriesPage() {
         )}
 
         {/* Submit Story CTA */}
-        <div className="mt-12 bg-white rounded-3xl border-2 border-dashed border-orange-200 p-10 text-center">
+        <div className="mt-12 bg-[#FAF5EE] rounded-3xl border-2 border-dashed border-[#3B0764] p-10 text-center">
           <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-            <PenLine size={28} className="text-orange-500" />
+            <PenLine size={28} className="text-purple-500" />
           </div>
           <h3 className="font-montserrat text-2xl font-bold text-gray-900 mb-3">Share Your Story</h3>
           <p className="text-gray-500 mb-6 max-w-md mx-auto">
@@ -302,11 +307,11 @@ export default function StoriesPage() {
       {/* Story Modal */}
       {selectedStory && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto"
+          className="fixed inset-0 bg-[#2B2019]/70 z-50 flex items-center justify-center p-4 overflow-y-auto"
           onClick={() => setSelected(null)}
         >
           <div
-            className="bg-white rounded-3xl max-w-2xl w-full my-8 overflow-hidden shadow-2xl fade-in"
+            className="bg-[#FAF5EE] rounded-3xl max-w-2xl w-full my-8 overflow-hidden shadow-2xl fade-in"
             onClick={(e) => e.stopPropagation()}
           >
             {selectedStory.image && (
@@ -317,14 +322,14 @@ export default function StoriesPage() {
             <div className="p-8">
               <div className="flex gap-2 mb-4 flex-wrap">
                 {(selectedStory.tags || []).map((tag: string) => (
-                  <span key={tag} className="bg-purple-100 text-purple-700 text-xs px-3 py-1 rounded-full font-medium">
+                  <span key={tag} className="bg-[#DCE7DC] text-[#3D5A3D] text-xs px-3 py-1 rounded-lg font-medium">
                     {tag}
                   </span>
                 ))}
               </div>
               <h2 className="font-montserrat text-2xl font-bold text-gray-900 mb-4">{selectedStory.title}</h2>
               <div className="flex items-center gap-3 mb-6 pb-4 border-b border-gray-100">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-orange-400 to-pink-500 flex items-center justify-center text-white font-bold">
+                <div className="w-10 h-10 rounded-full bg-[#3B0764] flex items-center justify-center text-white font-bold">
                   {selectedStory.author?.charAt(0) || '?'}
                 </div>
                 <div>
@@ -341,10 +346,10 @@ export default function StoriesPage() {
                 <div className="flex items-center gap-4">
                   <button
                     onClick={(e) => toggleLike(selectedStory.id, e)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       liked[selectedStory.id]
-                        ? 'bg-red-100 text-red-600'
-                        : 'bg-gray-100 text-gray-600 hover:bg-red-50 hover:text-red-500'
+                        ? 'bg-[#F2D7CE] text-[#8F3E23]'
+                        : 'bg-[#E9DED2] text-[#3A2E24] hover:bg-[#F2D7CE] hover:text-[#8F3E23]'
                     }`}
                   >
                     <Heart size={14} className={liked[selectedStory.id] ? 'fill-current' : ''} />
@@ -356,7 +361,7 @@ export default function StoriesPage() {
                 </div>
                 <button
                   onClick={() => setSelected(null)}
-                  className="text-gray-400 hover:text-gray-600 text-sm px-4 py-2 rounded-full hover:bg-gray-100 transition-colors"
+                  className="text-[#023570] hover:text-[#023570] text-sm px-4 py-2 rounded-lg hover:bg-[#51a2ff] transition-colors"
                 >
                   Close
                 </button>
@@ -369,11 +374,11 @@ export default function StoriesPage() {
       {/* Write a Story Modal */}
       {showStoryForm && (
         <div
-          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+          className="fixed inset-0 bg-[#2B2019]/70 z-50 flex items-center justify-center p-4"
           onClick={() => setShowStoryForm(false)}
         >
           <div
-            className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-[#FAF5EE] rounded-3xl max-w-lg w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-6">
@@ -428,7 +433,7 @@ export default function StoriesPage() {
               <div className="flex gap-3">
                 <button
                   onClick={() => setShowStoryForm(false)}
-                  className="flex-1 border border-gray-200 rounded-xl py-2.5 text-gray-600 font-medium"
+                  className="flex-1 border border-blue-200 rounded-xl py-2.5 text-gray-600 font-medium"
                 >
                   Cancel
                 </button>
@@ -463,7 +468,7 @@ export default function StoriesPage() {
                 </div>
                 <div>
                   <div className="font-bold text-lg font-montserrat">The Kornu Family</div>
-                  <div className="text-orange-400 text-xs uppercase tracking-widest">Est. 1946 · Ve-Gbodome, Ghana</div>
+                  <div className="text-blue-400 text-xs uppercase tracking-widest">Est. 1946 · Ve-Gbodome, Ghana</div>
                 </div>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
@@ -479,7 +484,7 @@ export default function StoriesPage() {
                   <li key={link}>
                     <button
                       onClick={() => handleNav(link.toLowerCase().replace('our ', ''))}
-                      className="text-gray-400 hover:text-orange-400 text-sm transition-colors"
+                      className="text-gray-400 hover:text-blue-400 text-sm transition-colors"
                     >
                       {link}
                     </button>
@@ -497,7 +502,7 @@ export default function StoriesPage() {
                 <li className="pt-2">
                   <button
                     onClick={() => handleNav('signin')}
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-xs font-semibold transition-colors"
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-semibold transition-colors"
                   >
                     Sign In to Portal
                   </button>
@@ -510,9 +515,7 @@ export default function StoriesPage() {
             <p className="text-gray-500 text-sm">
               © 2025 The Kornu Family Website. All rights reserved. Made with for our family.
             </p>
-            <p className="text-gray-600 text-xs">
-              "A family is a circle of strength and love" — Granpa John Lily Kornu
-            </p>
+            
           </div>
         </div>
       </footer>

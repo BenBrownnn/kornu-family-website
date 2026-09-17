@@ -125,14 +125,14 @@ export default function GalleryPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FAF5EE]">
       {/* Header */}
-      <div className="pt-24 pb-12 bg-gradient-to-r from-gray-900 via-gray-800 to-pink-900 relative overflow-hidden">
+      <div className="pt-24 pb-12 bg-[#2B2019] relative overflow-hidden">
         <div className="absolute inset-0 opacity-15">
           <img src="/images/gallery1.jpg" alt="" className="w-full h-full object-cover" />
         </div>
         <div className="relative z-10 max-w-6xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 bg-pink-500/20 text-pink-300 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
+          <div className="inline-flex items-center gap-2 bg-[#C89B3C]/20 text-[#F1E1B8] px-4 py-1.5 rounded-xl text-sm font-semibold mb-4">
             <Camera size={14} />
             Photo Album
           </div>
@@ -165,8 +165,8 @@ export default function GalleryPage() {
               onClick={() => setCategory(cat)}
               className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
                 category === cat
-                  ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white shadow-md'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-orange-300 hover:text-orange-500'
+                  ? 'bg-[#023570] text-white shadow-md'
+                  : 'bg-[#FAF5EE] text-[#023570] border border-[#D8CBBE] hover:border-[#51a2ff] hover:text-[#023570]'
               }`}
             >
               {cat}
@@ -215,7 +215,7 @@ export default function GalleryPage() {
         )}
 
         {/* Stats */}
-       <div className="mt-16 bg-gray-900 rounded-3xl p-8 text-white">
+      <div className="mt-16 bg-[#023570] rounded-3xl p-8 text-white">
           <div className="grid grid-cols-3 gap-6 text-center">
             {[
               { value: `${fullGallery.length}+`, label: 'Photos' },
@@ -242,7 +242,7 @@ export default function GalleryPage() {
       {/* Lightbox */}
       {lightboxImage && lightboxIndex >= 0 && (
         <div
-          className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center"
+          className="fixed inset-0 bg-[#2B2019]/95 z-50 flex items-center justify-center"
           onClick={closeLightbox}
         >
           {/* Close */}
@@ -289,13 +289,13 @@ export default function GalleryPage() {
       )}
 
       {/* ============ FOOTER ============ */}
-      <footer className="bg-gray-900 text-white py-16">
+      <footer className="bg-[#101828] text-white py-16">
         <div className="max-w-6xl mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-10 mb-10">
             {/* Brand */}
             <div className="md:col-span-2">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 bg-gradient-to-br items-center justify-center">
+                <div className="w-12 h-12 bg-[] flex items-center justify-center">
                   <img src="/images/kornu-logo.png" alt="Kornu" className="w-full h-full object-cover"
                     onError={(e) => {
                       const t = e.target as HTMLImageElement;
@@ -306,7 +306,7 @@ export default function GalleryPage() {
                 </div>
                 <div>
                   <div className="font-bold text-lg font-montserrat">The Kornu Family</div>
-                  <div className="text-orange-400 text-xs uppercase tracking-widest">Est. 1946 · Ve-Gbodome, Ghana</div>
+                  <div className="text-blue-400 text-xs uppercase tracking-widest">Est. 1946 · Ve-Gbodome, Ghana</div>
                 </div>
               </div>
               <p className="text-gray-400 text-sm leading-relaxed max-w-sm">
@@ -322,7 +322,7 @@ export default function GalleryPage() {
                   <li key={link}>
                     <button
                       onClick={() => handleNav(link.toLowerCase().replace('our ', ''))}
-                      className="text-gray-400 hover:text-orange-400 text-sm transition-colors"
+                      className="text-gray-400 hover:text-blue-400 text-sm transition-colors"
                     >
                       {link}
                     </button>
@@ -340,7 +340,7 @@ export default function GalleryPage() {
                 <li className="pt-2">
                   <button
                     onClick={() => handleNav('signin')}
-                    className="bg-orange-500 hover:bg-orange-600 text-white px-4 py-2 rounded-full text-xs font-semibold transition-colors"
+                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-semibold transition-colors"
                   >
                     Sign In to Portal
                   </button>
@@ -353,9 +353,7 @@ export default function GalleryPage() {
             <p className="text-gray-500 text-sm">
               © 2025 The Kornu Family Website. All rights reserved. Made with for our family.
             </p>
-            <p className="text-gray-600 text-xs">
-              "A family is a circle of strength and love" — Granpa John Lily Kornu
-            </p>
+            
           </div>
         </div>
       </footer>
