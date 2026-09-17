@@ -1,4 +1,4 @@
-
+import { useEffect, useState } from 'react';
 import { familyEvents } from '../data/familyData';
 import {
   Calendar,
@@ -11,21 +11,88 @@ import {
   PartyPopper,
   Bird,
   Heart,
+  ChevronLeft,
   type LucideIcon,
 } from 'lucide-react';
 import { useStore } from '@/store/useStore';
-import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import Footer from '../components/Footer';
 
-const eventTypeColors: Record<string, { bg: string; text: string; border: string }> = {
-  reunion: { bg: 'bg-[#d0e6ff]', text: 'text-[#023570]', border: 'border-[#d0e6ff]' },
-  birthday: { bg: 'bg-[#F2D7CE]', text: 'text-[#8F3E23]', border: 'border-[#D9A491]' },
-  celebration: { bg: 'bg-[#DCE7DC]', text: 'text-[#3D5A3D]', border: 'border-[#AFC4AF]' },
-  memorial: { bg: 'bg-[#E9DED2]', text: 'text-[#3A2E24]', border: 'border-[#CDBBAA]' },
-  wedding: { bg: 'bg-[#DCE7DC]', text: 'text-[#3D5A3D]', border: 'border-[#AFC4AF]' },
+/* ============================================================
+   EVENT TYPES
+============================================================ */
+
+type EventType =
+  | 'reunion'
+  | 'birthday'
+  | 'celebration'
+  | 'memorial'
+  | 'wedding';
+
+type FamilyEvent = {
+  id: string;
+  title: string;
+  date: string;
+  type: EventType;
+  location: string;
+  description: string;
+  image?: string;
+  rsvpCount?: number;
 };
 
-const eventTypeIcons: Record<string, LucideIcon> = {
+type Attendee = {
+  name: string;
+  role: string;
+};
+
+/* ============================================================
+   EVENT TYPE STYLES
+============================================================ */
+
+const eventTypeColors: Record<
+  EventType,
+  {
+    bg: string;
+    text: string;
+    border: string;
+  }
+> = {
+  reunion: {
+    bg: 'bg-[#D0E6FF]',
+    text: 'text-[#023570]',
+    border: 'border-[#9BC7F5]',
+  },
+
+  birthday: {
+    bg: 'bg-[#E9D5FF]',
+    text: 'text-[#6A1B9A]',
+    border: 'border-[#C8A6E8]',
+  },
+
+  celebration: {
+    bg: 'bg-[#DCE7DC]',
+    text: 'text-[#3D5A3D]',
+    border: 'border-[#AFC4AF]',
+  },
+
+  memorial: {
+    bg: 'bg-[#E8E9ED]',
+    text: 'text-[#3A4350]',
+    border: 'border-[#C6CBD3]',
+  },
+
+  wedding: {
+    bg: 'bg-[#E9D5FF]',
+    text: 'text-[#6A1B9A]',
+    border: 'border-[#C8A6E8]',
+  },
+};
+
+/* ============================================================
+   EVENT TYPE ICONS
+============================================================ */
+
+const eventTypeIcons: Record<EventType, LucideIcon> = {
   reunion: PartyPopper,
   birthday: Cake,
   celebration: PartyPopper,
@@ -33,10 +100,28 @@ const eventTypeIcons: Record<string, LucideIcon> = {
   wedding: Heart,
 };
 
-type Attendee = {
-  name: string;
-  role: string;
-};
+/* ============================================================
+   NORMALIZE LOCAL EVENTS
+============================================================ */
+
+const normalizeEvent = (
+  event: Partial<FamilyEvent> & {
+    id: string | number;
+  }
+): FamilyEvent => ({
+  id: String(event.id),
+  title: event.title || 'Family Event',
+  date: event.date || new Date().toISOString(),
+  type: (event.type || 'celebration') as EventType,
+  location: event.location || 'Location to be announced',
+  description: event.description || '',
+  image: event.image,
+  rsvpCount: event.rsvpCount,
+});
+
+/* ============================================================
+   EVENTS PAGE
+============================================================ */
 
 export default function EventsPage() {
   const [activeFilter, setActiveFilter] = useState('All');
@@ -48,59 +133,157 @@ export default function EventsPage() {
     isAuthenticated,
   } = useStore();
 
-  const [dbEvents, setDbEvents] = useState<any[]>([]);
-  const [attendees, setAttendees] = useState<Record<string, Attendee[]>>({});
-  const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
-  const [loadingAttendees, setLoadingAttendees] = useState<string | null>(null);
-  const [reminders, setReminders] = useState<Record<string, boolean>>({});
+  const [dbEvents, setDbEvents] = useState<FamilyEvent[]>([]);
+  const [attendees, setAttendees] = useState<
+    Record<string, Attendee[]>
+  >({});
+  const [expandedEvent, setExpandedEvent] =
+    useState<string | null>(null);
+  const [loadingAttendees, setLoadingAttendees] =
+    useState<string | null>(null);
+  const [reminders, setReminders] = useState<
+    Record<string, boolean>
+  >({});
+
+  /* ==========================================================
+     FETCH EVENTS FROM SUPABASE
+  ========================================================== */
 
   useEffect(() => {
     const fetchEvents = async () => {
       const { data, error } = await supabase
         .from('events')
         .select('*')
-        .order('date', { ascending: true });
+        .order('date', {
+          ascending: true,
+        });
 
-      if (!error && data) {
-        setDbEvents(data);
+      if (error) {
+        console.error(
+          'Error fetching family events:',
+          error
+        );
+        return;
       }
+
+      if (!data) {
+        setDbEvents([]);
+        return;
+      }
+
+      const normalizedEvents: FamilyEvent[] = data.map(
+        (event) =>
+          normalizeEvent({
+            id: event.id,
+            title: event.title,
+            date: event.date,
+            type: event.type,
+            location: event.location,
+            description: event.description,
+            image: event.image,
+            rsvpCount: event.rsvpCount,
+          })
+      );
+
+      setDbEvents(normalizedEvents);
     };
 
     fetchEvents();
   }, []);
 
-  const allEvents = [...dbEvents, ...familyEvents];
+  /* ==========================================================
+     COMBINE DATABASE + LOCAL EVENTS
+  ========================================================== */
+
+  const localEvents: FamilyEvent[] = familyEvents.map(
+    (event) =>
+      normalizeEvent({
+        id: event.id,
+        title: event.title,
+        date: event.date,
+        type: event.type,
+        location: event.location,
+        description: event.description,
+        image: event.image,
+        rsvpCount: event.rsvpCount,
+      })
+  );
+
+  const allEvents: FamilyEvent[] = [
+    ...dbEvents,
+    ...localEvents,
+  ];
+
+  /* ==========================================================
+     NAVIGATION
+  ========================================================== */
 
   const handleNav = (page: string) => {
-    setCurrentPage(page);
+    const pageMap: Record<string, string> = {
+      home: 'home',
+      family: 'family',
+      gallery: 'gallery',
+      events: 'events',
+      stories: 'stories',
+      portal: 'portal',
+      signin: 'signin',
+    };
+
+    setCurrentPage(pageMap[page] ?? 'home');
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
   };
+
+  /* ==========================================================
+     RSVP
+  ========================================================== */
 
   const handleRSVP = (eventId: string) => {
     if (!isAuthenticated) {
       setCurrentPage('signin');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      });
+
       return;
     }
 
     toggleRSVP(eventId);
   };
 
+  /* ==========================================================
+     REMINDERS
+  ========================================================== */
+
   const toggleReminder = (id: string) => {
-    setReminders((prev) => {
+    setReminders((previous) => {
       const updated = {
-        ...prev,
-        [id]: !prev[id],
+        ...previous,
+        [id]: !previous[id],
       };
 
       if (updated[id]) {
-        alert("You'll get a reminder before this event!");
+        alert(
+          "You'll get a reminder before this event!"
+        );
       }
 
       return updated;
     });
   };
 
-  const toggleAttendeesList = async (eventId: string) => {
+  /* ==========================================================
+     ATTENDEE LIST
+  ========================================================== */
+
+  const toggleAttendeesList = async (
+    eventId: string
+  ) => {
     if (expandedEvent === eventId) {
       setExpandedEvent(null);
       return;
@@ -108,29 +291,53 @@ export default function EventsPage() {
 
     setExpandedEvent(eventId);
 
-    // Only fetch if we don't already have it cached
-    if (!attendees[eventId]) {
-      setLoadingAttendees(eventId);
+    if (attendees[eventId]) {
+      return;
+    }
 
-      const { data, error } = await supabase
-        .from('rsvps')
-        .select('profiles ( name, role )')
-        .eq('event_id', eventId);
+    setLoadingAttendees(eventId);
 
-      if (!error && data) {
-        const names = data
-          .map((r: any) => r.profiles)
-          .filter(Boolean) as Attendee[];
+    const { data, error } = await supabase
+      .from('rsvps')
+      .select('profiles ( name, role )')
+      .eq('event_id', eventId);
 
-        setAttendees((prev) => ({
-          ...prev,
-          [eventId]: names,
-        }));
-      }
+    if (error) {
+      console.error(
+        'Error loading event attendees:',
+        error
+      );
+
+      setAttendees((previous) => ({
+        ...previous,
+        [eventId]: [],
+      }));
 
       setLoadingAttendees(null);
+      return;
     }
+
+    if (data) {
+      const names: Attendee[] = data
+        .map((rsvp) => rsvp.profiles)
+        .filter(Boolean)
+        .map((profile: any) => ({
+          name: profile.name || 'Family Member',
+          role: profile.role || 'member',
+        }));
+
+      setAttendees((previous) => ({
+        ...previous,
+        [eventId]: names,
+      }));
+    }
+
+    setLoadingAttendees(null);
   };
+
+  /* ==========================================================
+     FILTERS
+  ========================================================== */
 
   const types = [
     'All',
@@ -138,23 +345,32 @@ export default function EventsPage() {
     'Birthday',
     'Celebration',
     'Memorial',
+    'Wedding',
   ];
 
-  const filtered = allEvents.filter(
-    (e) =>
-      activeFilter === 'All' ||
-      e.type === activeFilter.toLowerCase()
-  );
+  const filtered: FamilyEvent[] =
+    allEvents.filter(
+      (event) =>
+        activeFilter === 'All' ||
+        event.type === activeFilter.toLowerCase()
+    );
+
+  /* ==========================================================
+     DATE FORMATTING
+  ========================================================== */
 
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
 
     return {
       day: date.getDate(),
+
       month: date.toLocaleDateString('en-GB', {
         month: 'short',
       }),
+
       year: date.getFullYear(),
+
       full: date.toLocaleDateString('en-GB', {
         weekday: 'long',
         day: 'numeric',
@@ -164,9 +380,18 @@ export default function EventsPage() {
     };
   };
 
+  /* ==========================================================
+     DAYS UNTIL EVENT
+  ========================================================== */
+
   const getDaysUntil = (dateStr: string) => {
     const today = new Date();
+
+    today.setHours(0, 0, 0, 0);
+
     const event = new Date(dateStr);
+
+    event.setHours(0, 0, 0, 0);
 
     const diff = Math.ceil(
       (event.getTime() - today.getTime()) /
@@ -174,31 +399,33 @@ export default function EventsPage() {
     );
 
     if (diff < 0) return 'Past';
+
     if (diff === 0) return 'Today!';
+
     if (diff === 1) return 'Tomorrow!';
 
     return `${diff} days away`;
   };
 
-  /*
-   * Group events by month and year.
-   *
-   * Example:
-   * August 2026
-   * September 2026
-   * October 2026
-   */
-  const groupEventsByMonth = (events: any[]) => {
-    const groups: Record<string, any[]> = {};
+  /* ==========================================================
+     GROUP EVENTS BY MONTH
+  ========================================================== */
+
+  const groupEventsByMonth = (
+    events: FamilyEvent[]
+  ): Record<string, FamilyEvent[]> => {
+    const groups: Record<
+      string,
+      FamilyEvent[]
+    > = {};
 
     events.forEach((event) => {
-      const monthKey = new Date(event.date).toLocaleDateString(
-        'en-GB',
-        {
-          month: 'long',
-          year: 'numeric',
-        }
-      );
+      const monthKey = new Date(
+        event.date
+      ).toLocaleDateString('en-GB', {
+        month: 'long',
+        year: 'numeric',
+      });
 
       if (!groups[monthKey]) {
         groups[monthKey] = [];
@@ -210,480 +437,615 @@ export default function EventsPage() {
     return groups;
   };
 
+  const groupedEvents =
+    groupEventsByMonth(filtered);
+
+  /* ==========================================================
+     RENDER
+  ========================================================== */
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-[#FAF5EE] text-[#102A43]">
 
-      {/* Header */}
-      <div className="pt-24 pb-12 bg-[#023570] relative overflow-hidden">
-        <div className="absolute inset-0 opacity-27">
-          <img
-            src="/images/family-gathering.jpg"
-            alt=""
-            className="w-full h-full object-cover"
-          />
+      {/* ========================================================
+          HERO
+      ========================================================= */}
+
+      <section className="relative min-h-[540px] overflow-hidden text-white">
+
+        {/* Background image */}
+        <img
+          src="/images/gallery-3.webp"
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-cover"
+        />
+
+        {/* Main blue overlay */}
+        <div className="absolute inset-0 bg-[#023570]/55" />
+
+        {/* Blue / purple gradient */}
+        <div className="absolute inset-0 bg-gradient-to-br from-[#023570]/90 via-[#023570]/50 to-[#2E1065]/65" />
+
+        {/* Bottom fade */}
+        <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#FAF5EE] to-transparent" />
+
+        {/* Decorative glow */}
+        <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-[#51A2FF]/20 blur-3xl" />
+
+        <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-[#6A1B9A]/20 blur-3xl" />
+
+        {/* Hero content */}
+        <div className="relative z-10 mx-auto flex min-h-[540px] max-w-6xl items-center px-4 py-20">
+
+          <div className="max-w-3xl">
+
+            {/* Back */}
+            <button
+              onClick={() => handleNav('home')}
+              className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20"
+            >
+              <ChevronLeft size={16} />
+              Back to Home
+            </button>
+
+            {/* Eyebrow 
+            
+            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-blue-100 backdrop-blur-md">
+              <Calendar size={15} />
+              Family Calendar
+            </div>
+            */}
+
+            {/* Heading */}
+            <h1 className="font-['Montserrat'] text-4xl font-black leading-tight tracking-tight md:text-6xl lg:text-7xl">
+              Family
+              <span className="block text-[#51A2FF]">
+                Events
+              </span>
+            </h1>
+
+            {/* Description */}
+            <p className="mt-6 max-w-2xl text-base leading-8 text-blue-100 md:text-lg">
+              Stay connected with every gathering,
+              celebration, milestone, and special moment
+              in the Kornu family calendar.
+            </p>
+
+            {/* Hero actions */}
+            <div className="mt-8 flex flex-wrap gap-3">
+
+              <button
+                onClick={() => {
+                  document
+                    .getElementById('events-list')
+                    ?.scrollIntoView({
+                      behavior: 'smooth',
+                    });
+                }}
+                className="inline-flex items-center gap-2 rounded-full bg-[#51A2FF] px-6 py-3 text-sm font-bold text-[#023570] shadow-lg transition hover:-translate-y-0.5 hover:bg-white"
+              >
+                <Calendar size={17} />
+                View Events
+              </button>
+
+              <button
+                onClick={() => handleNav('portal')}
+                className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/20"
+              >
+                <Users size={17} />
+                Family Portal
+              </button>
+
+            </div>
+
+          </div>
         </div>
+      </section>
 
-        <div className="relative z-10 max-w-6xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 bg-blue-500/20 text-blue-300 px-4 py-1.5 rounded-full text-sm font-semibold mb-4">
-            <Calendar size={14} />
-            Family Calendar
+      {/* ========================================================
+          MAIN CONTENT
+      ========================================================= */}
+
+      <main
+        id="events-list"
+        className="mx-auto max-w-5xl px-4 py-16"
+      >
+
+        {/* ======================================================
+            FILTERS
+        ======================================================= */}
+
+        <div className="mb-12">
+
+          <div className="mb-4 text-center">
+            <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#52667A]">
+              Browse the calendar
+            </p>
+
+            <h2 className="mt-2 font-['Montserrat'] text-2xl font-black text-[#023570]">
+              Upcoming & Family Events
+            </h2>
           </div>
 
-          <h1 className="font-['Montserrat'] text-5xl font-bold text-white mb-4">
-            Family Events
-          </h1>
+          <div className="flex flex-wrap justify-center gap-2.5">
 
-          <p className="text-gray-300 text-lg max-w-2xl mx-auto">
-            Stay connected with every gathering, celebration, and milestone in the Kornu family calendar.
-          </p>
+            {types.map((type) => {
+              const isActive =
+                activeFilter === type;
+
+              const Icon =
+                type !== 'All'
+                  ? eventTypeIcons[
+                      type.toLowerCase() as EventType
+                    ]
+                  : null;
+
+              return (
+                <button
+                  key={type}
+                  onClick={() =>
+                    setActiveFilter(type)
+                  }
+                  className={`inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold transition-all ${
+                    isActive
+                      ? 'bg-[#023570] text-white shadow-md'
+                      : 'bg-white text-[#023570] ring-1 ring-[#D0E6FF] hover:bg-[#E9D5FF] hover:text-[#6A1B9A]'
+                  }`}
+                >
+                  {Icon && <Icon size={14} />}
+                  {type}
+                </button>
+              );
+            })}
+
+          </div>
         </div>
-      </div>
 
-      <div className="max-w-5xl mx-auto px-4 py-12">
+        {/* ======================================================
+            EVENTS LIST
+        ======================================================= */}
 
-        {/* Filter */}
-        <div className="flex gap-3 flex-wrap justify-center mb-10">
-          {types.map((type) => (
-            <button
-              key={type}
-              onClick={() => setActiveFilter(type)}
-              className={`px-5 py-2 rounded-full text-sm font-medium transition-all ${
-                activeFilter === type
-                  ? 'bg-[#023570] text-white shadow-md'
-                  : 'bg-[#FAF5EE] text-[##023570] border border-[#023570] hover:border-[#51a2ff]'
-              }`}
-            >
-              {type !== 'All' && (() => {
-                const Icon = eventTypeIcons[type.toLowerCase()];
-                return Icon ? <Icon size={14} /> : null;
-              })()}{' '}
-              {type}
-            </button>
-          ))}
-        </div>
-
-        {/* Events List — GROUPED BY MONTH */}
         <div className="space-y-10">
 
-          {Object.entries(groupEventsByMonth(filtered)).map(
-            ([month, monthEvents]) => (
-              <div key={month} className="mb-10">
+          {Object.entries(
+            groupedEvents
+          ).map(([month, monthEvents]) => (
+            <section
+              key={month}
+              className="mb-10"
+            >
 
-                {/* Month Heading */}
-                <h3 className="text-sm font-semibold text-blue-400 uppercase tracking-widest mb-4">
+              {/* Month heading */}
+              <div className="mb-5 flex items-center gap-4">
+
+                <h3 className="whitespace-nowrap text-sm font-bold uppercase tracking-[0.2em] text-[#6A1B9A]">
                   {month}
                 </h3>
 
-                {/* Events inside this month */}
-                <div className="space-y-6">
+                <div className="h-px flex-1 bg-[#D0E6FF]" />
 
-                  {monthEvents.map((event) => {
-                    const dateInfo = formatDate(event.date);
-                    const daysUntil = getDaysUntil(event.date);
-                    const colors =
-                      eventTypeColors[event.type] ||
-                      eventTypeColors.celebration;
+              </div>
 
-                    const hasRsvped = rsvpedEvents.includes(event.id);
+              {/* Events */}
+              <div className="space-y-6">
 
-                    return (
-                      <div
-                        key={event.id}
-                        className={`bg-white rounded-2xl shadow-sm border-2 ${colors.border} overflow-hidden card-hover`}
-                      >
-                        <div className="flex">
+                {monthEvents.map((event) => {
+                  const dateInfo =
+                    formatDate(event.date);
 
-                          {/* Date Column */}
-                          <div className="flex-shrink-0 w-24 bg-[#023570] flex flex-col items-center justify-center text-white py-6">
-                            <div className="text-xs font-semibold uppercase tracking-widest opacity-90">
-                              {dateInfo.month}
-                            </div>
+                  const daysUntil =
+                    getDaysUntil(event.date);
 
-                            <div className="text-4xl font-black font-montserrat leading-none">
-                              {dateInfo.day}
-                            </div>
+                  const colors =
+                    eventTypeColors[event.type] ||
+                    eventTypeColors.celebration;
 
-                            <div className="text-xs opacity-80 mt-1">
-                              {dateInfo.year}
-                            </div>
+                  const EventIcon =
+                    eventTypeIcons[event.type] ||
+                    Calendar;
+
+                  const hasRsvped =
+                    rsvpedEvents.includes(
+                      event.id
+                    );
+
+                  return (
+                    <article
+                      key={event.id}
+                      className={`group overflow-hidden rounded-3xl border ${colors.border} bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl`}
+                    >
+
+                      <div className="flex flex-col sm:flex-row">
+
+                        {/* =================================================
+                            DATE COLUMN
+                        ================================================== */}
+
+                        <div className="relative flex w-full flex-shrink-0 flex-row items-center justify-center gap-4 overflow-hidden bg-[#023570] px-5 py-5 text-white sm:w-28 sm:flex-col sm:gap-0 sm:py-7">
+
+                          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[#51A2FF]/20 blur-xl" />
+
+                          <div className="relative text-xs font-bold uppercase tracking-[0.15em] text-blue-100">
+                            {dateInfo.month}
                           </div>
 
-                          {/* Content */}
-                          <div className="flex-1 p-6">
-                            <div className="flex items-start justify-between gap-4">
+                          <div className="relative font-['Montserrat'] text-4xl font-black leading-none sm:mt-1">
+                            {dateInfo.day}
+                          </div>
 
-                              <div className="flex-1">
+                          <div className="relative text-xs text-blue-200 sm:mt-1">
+                            {dateInfo.year}
+                          </div>
 
-                                <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        </div>
 
-                                  <span
-                                    className={`text-xs font-semibold px-2.5 py-1 rounded-full ${colors.bg} ${colors.text}`}
-                                  >
-                                    {(() => {
-                                      const Icon = eventTypeIcons[event.type] || Calendar;
-                                      return <Icon size={13} className="mr-1 inline" />;
-                                    })()}{' '}
-                                    {event.type.charAt(0).toUpperCase() +
-                                      event.type.slice(1)}
-                                  </span>
+                        {/* =================================================
+                            EVENT CONTENT
+                        ================================================== */}
 
-                                  <span
-                                    className={`text-xs font-medium px-2.5 py-1 rounded-full ${
-                                      daysUntil === 'Past'
-                                        ? 'bg-gray-100 text-gray-500'
-                                        : daysUntil.includes('!')
-                                        ? 'bg-[#DCE7DC] text-[#3D5A3D]'
-                                        : 'bg-[#E9DED2] text-[#8F3E23]'
-                                    }`}
-                                  >
-                                    <Clock
-                                      size={10}
-                                      className="inline mr-1"
-                                    />
-                                    {daysUntil}
-                                  </span>
+                        <div className="flex-1 p-5 md:p-7">
 
-                                </div>
+                          <div className="flex items-start justify-between gap-5">
 
-                                <h3 className="font-bold text-gray-900 font-montserrat text-xl mb-2">
-                                  {event.title}
-                                </h3>
+                            <div className="min-w-0 flex-1">
 
-                                <div className="flex flex-wrap gap-4 mb-3 text-sm text-gray-500">
+                              {/* Badges */}
+                              <div className="mb-3 flex flex-wrap items-center gap-2">
 
-                                  <div className="flex items-center gap-1.5">
-                                    <Calendar
-                                      size={14}
-                                      className="text-blue-400"
-                                    />
-                                    {dateInfo.full}
-                                  </div>
+                                <span
+                                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${colors.bg} ${colors.text}`}
+                                >
+                                  <EventIcon size={13} />
+                                  {event.type
+                                    .charAt(0)
+                                    .toUpperCase() +
+                                    event.type.slice(
+                                      1
+                                    )}
+                                </span>
 
-                                  <div className="flex items-center gap-1.5">
-                                    <MapPin
-                                      size={14}
-                                      className="text-blue-400"
-                                    />
-                                    {event.location}
-                                  </div>
-
-                                  {event.rsvpCount !== undefined && (
-                                    <span className="text-xs text-gray-400">
-                                      {event.rsvpCount +
-                                        (hasRsvped ? 1 : 0)}{' '}
-                                      attending
-                                    </span>
-                                  )}
-
-                                </div>
-
-                                <p className="text-gray-500 text-sm leading-relaxed">
-                                  {event.description}
-                                </p>
+                                <span
+                                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                                    daysUntil ===
+                                    'Past'
+                                      ? 'bg-gray-100 text-gray-500'
+                                      : daysUntil.includes(
+                                          '!'
+                                        )
+                                      ? 'bg-[#DCE7DC] text-[#3D5A3D]'
+                                      : 'bg-[#D0E6FF] text-[#023570]'
+                                  }`}
+                                >
+                                  <Clock size={11} />
+                                  {daysUntil}
+                                </span>
 
                               </div>
 
-                              {event.image && (
-                                <div className="hidden md:block flex-shrink-0 w-28 h-24 rounded-xl overflow-hidden">
-                                  <img
-                                    src={event.image}
-                                    alt={event.title}
-                                    className="w-full h-full object-cover"
+                              {/* Title */}
+                              <h3 className="font-['Montserrat'] text-xl font-black text-[#102A43] md:text-2xl">
+                                {event.title}
+                              </h3>
+
+                              {/* Metadata */}
+                              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#52667A]">
+
+                                <div className="flex items-center gap-1.5">
+                                  <Calendar
+                                    size={14}
+                                    className="flex-shrink-0 text-[#51A2FF]"
                                   />
+
+                                  <span>
+                                    {dateInfo.full}
+                                  </span>
                                 </div>
+
+                                <div className="flex items-center gap-1.5">
+                                  <MapPin
+                                    size={14}
+                                    className="flex-shrink-0 text-[#51A2FF]"
+                                  />
+
+                                  <span>
+                                    {event.location}
+                                  </span>
+                                </div>
+
+                                {event.rsvpCount !==
+                                  undefined && (
+                                  <span className="font-semibold text-[#6A1B9A]">
+                                    {event.rsvpCount +
+                                      (hasRsvped
+                                        ? 1
+                                        : 0)}{' '}
+                                    attending
+                                  </span>
+                                )}
+
+                              </div>
+
+                              {/* Description */}
+                              {event.description && (
+                                <p className="mt-4 max-w-2xl text-sm leading-7 text-[#52667A]">
+                                  {event.description}
+                                </p>
                               )}
 
                             </div>
 
-                            {/* Buttons */}
-                            <div className="flex items-center gap-3 mt-4 pt-4 border-t border-gray-100">
+                            {/* Event image */}
+                            {event.image && (
+                              <div className="hidden h-28 w-32 flex-shrink-0 overflow-hidden rounded-2xl ring-1 ring-[#D0E6FF] md:block">
 
-                              <button
-                                onClick={() => handleRSVP(event.id)}
-                                className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all ${
-                                  hasRsvped
-                                    ? 'bg-[#DCE7DC] text-[#3D5A3D] border border-[#023570]'
-                                    : 'bg-[#023570] text-white shadow-md hover:bg-[#51a2ff]'
-                                }`}
-                              >
-                                {!isAuthenticated ? (
-                                  <>
-                                    <Users size={15} />
-                                    Sign In to RSVP
-                                  </>
-                                ) : hasRsvped ? (
-                                  <>
-                                    <CheckCircle size={15} />
-                                    RSVP'd — Going!
-                                  </>
-                                ) : (
-                                  <>
-                                    <Users size={15} />
-                                    RSVP Now
-                                  </>
-                                )}
-                              </button>
-
-                              <button
-                                onClick={() =>
-                                  toggleReminder(event.id)
-                                }
-                                className={`flex items-center gap-1.5 px-4 py-2.5 rounded-xl text-sm transition-all ${
-                                  reminders[event.id]
-                                    ? 'bg-[#F1E1B8] text-[#8F3E23] border border-[#023570]'
-                                    : 'text-[#023570] border border-[#023570] hover:border-[#51a2ff] hover:text-[#51a2ff]'
-                                }`}
-                              >
-                                <Bell
-                                  size={14}
-                                  fill={
-                                    reminders[event.id]
-                                      ? 'currentColor'
-                                      : 'none'
-                                  }
+                                <img
+                                  src={event.image}
+                                  alt={event.title}
+                                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                  onError={(
+                                    event
+                                  ) => {
+                                    event.currentTarget.style.display =
+                                      'none';
+                                  }}
                                 />
-
-                                {reminders[event.id]
-                                  ? 'Reminder Set'
-                                  : 'Remind Me'}
-                              </button>
-
-                              {isAuthenticated && (
-                                <button
-                                  onClick={() =>
-                                    toggleAttendeesList(event.id)
-                                  }
-                                  className="text-sm text-gray-400 hover:text-blue-500 underline underline-offset-2 ml-auto"
-                                >
-                                  {expandedEvent === event.id
-                                    ? 'Hide attendees'
-                                    : "See who's going"}
-                                </button>
-                              )}
-
-                            </div>
-
-                            {/* Attendees */}
-                            {expandedEvent === event.id && (
-                              <div className="mt-4 pt-4 border-t border-gray-100">
-
-                                {loadingAttendees === event.id ? (
-                                  <p className="text-sm text-gray-400">
-                                    Loading attendees...
-                                  </p>
-                                ) : attendees[event.id]?.length ? (
-                                  <div className="flex flex-wrap gap-2">
-
-                                    {attendees[event.id].map(
-                                      (person, i) => (
-                                        <span
-                                          key={i}
-                                          className="flex items-center gap-1.5 bg-[#E9DED2] text-[#3A2E24] text-xs px-3 py-1.5 rounded-lg"
-                                        >
-                                          <span className="w-5 h-5 rounded-full bg-[#B5502F] text-white flex items-center justify-center font-bold text-[10px]">
-                                            {person.name.charAt(0)}
-                                          </span>
-
-                                          {person.name}
-                                        </span>
-                                      )
-                                    )}
-
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-gray-400">
-                                    No one has RSVP'd yet — be the first!
-                                  </p>
-                                )}
 
                               </div>
                             )}
 
                           </div>
+
+                          {/* =================================================
+                              ACTIONS
+                          ================================================== */}
+
+                          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[#EDF2F7] pt-5">
+
+                            {/* RSVP */}
+                            <button
+                              onClick={() =>
+                                handleRSVP(
+                                  event.id
+                                )
+                              }
+                              className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all ${
+                                hasRsvped
+                                  ? 'border border-[#AFC4AF] bg-[#DCE7DC] text-[#3D5A3D]'
+                                  : 'bg-[#023570] text-white shadow-sm hover:bg-[#51A2FF] hover:text-[#023570]'
+                              }`}
+                            >
+                              {!isAuthenticated ? (
+                                <>
+                                  <Users
+                                    size={15}
+                                  />
+                                  Sign In to RSVP
+                                </>
+                              ) : hasRsvped ? (
+                                <>
+                                  <CheckCircle
+                                    size={15}
+                                  />
+                                  RSVP'd — Going!
+                                </>
+                              ) : (
+                                <>
+                                  <Users
+                                    size={15}
+                                  />
+                                  RSVP Now
+                                </>
+                              )}
+                            </button>
+
+                            {/* Reminder */}
+                            <button
+                              onClick={() =>
+                                toggleReminder(
+                                  event.id
+                                )
+                              }
+                              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
+                                reminders[
+                                  event.id
+                                ]
+                                  ? 'border-[#C8A6E8] bg-[#E9D5FF] text-[#6A1B9A]'
+                                  : 'border-[#D0E6FF] text-[#023570] hover:bg-[#D0E6FF]'
+                              }`}
+                            >
+                              <Bell
+                                size={14}
+                                fill={
+                                  reminders[
+                                    event.id
+                                  ]
+                                    ? 'currentColor'
+                                    : 'none'
+                                }
+                              />
+
+                              {reminders[
+                                event.id
+                              ]
+                                ? 'Reminder Set'
+                                : 'Remind Me'}
+                            </button>
+
+                            {/* Attendees */}
+                            {isAuthenticated && (
+                              <button
+                                onClick={() =>
+                                  toggleAttendeesList(
+                                    event.id
+                                  )
+                                }
+                                className="ml-auto text-sm font-semibold text-[#52667A] underline decoration-[#D0E6FF] underline-offset-4 transition hover:text-[#51a2ff]"
+                              >
+                                {expandedEvent ===
+                                event.id
+                                  ? 'Hide attendees'
+                                  : "See who's going"}
+                              </button>
+                            )}
+
+                          </div>
+
+                          {/* =================================================
+                              ATTENDEES
+                          ================================================== */}
+
+                          {expandedEvent ===
+                            event.id && (
+                            <div className="mt-5 border-t border-[#EDF2F7] pt-5">
+
+                              {loadingAttendees ===
+                              event.id ? (
+                                <div className="flex items-center gap-2 text-sm text-[#52667A]">
+                                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#D0E6FF] border-t-[#023570]" />
+                                  Loading attendees...
+                                </div>
+                              ) : attendees[
+                                  event.id
+                                ]?.length ? (
+                                <div>
+
+                                  <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#52667A]">
+                                    Family members attending
+                                  </p>
+
+                                  <div className="flex flex-wrap gap-2">
+
+                                    {attendees[
+                                      event.id
+                                    ].map(
+                                      (
+                                        person,
+                                        index
+                                      ) => (
+                                        <span
+                                          key={`${event.id}-${person.name}-${index}`}
+                                          className="inline-flex items-center gap-2 rounded-xl bg-[#F3F6FA] px-3 py-1.5 text-xs font-semibold text-[#102A43]"
+                                        >
+
+                                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#023570] text-[10px] font-black text-white">
+                                            {person.name
+                                              .charAt(
+                                                0
+                                              )
+                                              .toUpperCase()}
+                                          </span>
+
+                                          {person.name}
+
+                                        </span>
+                                      )
+                                    )}
+
+                                  </div>
+
+                                </div>
+                              ) : (
+                                <p className="text-sm text-[#52667A]">
+                                  No one has RSVP'd
+                                  yet — be the first!
+                                </p>
+                              )}
+
+                            </div>
+                          )}
+
                         </div>
                       </div>
-                    );
-                  })}
+                    </article>
+                  );
+                })}
 
-                </div>
               </div>
-            )
-          )}
+            </section>
+          ))}
 
         </div>
 
-        {/* No Events */}
-        {filtered.length === 0 && (
-          <div className="text-center py-20">
-            <Calendar
-              size={48}
-              className="mx-auto text-gray-300 mb-4"
-            />
+        {/* ========================================================
+            NO EVENTS
+        ========================================================= */}
 
-            <p className="text-gray-400 text-lg">
-              No events in this category
+        {filtered.length === 0 && (
+          <div className="rounded-3xl bg-white px-6 py-16 text-center shadow-sm ring-1 ring-[#D0E6FF]">
+
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-[#E9D5FF] text-[#6A1B9A]">
+              <Calendar size={28} />
+            </div>
+
+            <h3 className="mt-5 font-['Montserrat'] text-xl font-black text-[#023570]">
+              No events found
+            </h3>
+
+            <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#52667A]">
+              There are currently no events in this
+              category. Try another filter or check back
+              later.
             </p>
+
+            <button
+              onClick={() =>
+                setActiveFilter('All')
+              }
+              className="mt-6 rounded-full bg-[#023570] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#2E1065]"
+            >
+              View All Events
+            </button>
+
           </div>
         )}
 
-        {/* Add Event CTA */}
-          <div className="mt-16 bg-[#101828] rounded-3xl p-8 text-white text-center">
+        {/* ========================================================
+            SUBMIT EVENT CTA
+        ========================================================= */}
 
-          <h2 className="font-montserrat text-2xl font-bold mb-3">
-            Have a family event to share?
-          </h2>
+        <section className="relative mt-16 overflow-hidden rounded-3xl bg-[#101828] p-8 text-center text-white md:p-12">
 
-          <p className="text-white/80 mb-6">
-            Sign in to the family portal to submit a new event for the family calendar.
-          </p>
+          <div className="absolute -right-20 -top-20 h-60 w-60 rounded-full bg-[#51A2FF]/10 blur-3xl" />
 
-          <button
-            onClick={() => {
-              setCurrentPage('portal');
-              window.scrollTo({
-                top: 0,
-                behavior: 'smooth',
-              });
-            }}
-            className="bg-[#023570] text-[white] px-8 py-3 rounded-xl font-bold hover:bg-[#51a2ff] transition-colors"
-          >
-            Submit an Event
-          </button>
+          <div className="absolute -bottom-20 -left-20 h-60 w-60 rounded-full bg-[#6A1B9A]/10 blur-3xl" />
 
-        </div>
-      </div>
+          <div className="relative z-10">
 
-      {/* FOOTER */}
-        <footer className="bg-[#101828] text-white py-16">
-
-        <div className="max-w-6xl mx-auto px-4">
-
-          <div className="grid md:grid-cols-4 gap-10 mb-10">
-
-            {/* Brand */}
-            <div className="md:col-span-2">
-
-              <div className="flex items-center gap-3 mb-4">
-
-                <div className="w-12 h-12 bg-gradient-to-br items-center justify-center">
-
-                  <img
-                    src="/images/kornu-logo.png"
-                    alt="Kornu"
-                    className="w-full h-full object-cover"
-                    onError={(e) => {
-                      const t = e.target as HTMLImageElement;
-
-                      t.style.display = 'none';
-
-                      t.parentElement!.innerHTML =
-                        '<span style="color:white;font-weight:900;font-size:1.3rem;font-family:serif;">K</span>';
-                    }}
-                  />
-
-                </div>
-
-                <div>
-                  <div className="font-bold text-lg font-montserrat">
-                    The Kornu Family
-                  </div>
-
-                  <div className="text-blue-400 text-xs uppercase tracking-widest">
-                    Est. 1946 · Ve-Gbodome, Ghana
-                  </div>
-                </div>
-
-              </div>
-
-              <p className="text-white-400 text-sm leading-relaxed max-w-sm">
-                Where every memory is treasured, every story is celebrated, and every family member is loved — always.
-              </p>
-
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-[#51A2FF]/15 text-[#51A2FF]">
+              <Calendar size={22} />
             </div>
 
-            {/* Quick Links */}
-            <div>
+            <h2 className="font-['Montserrat'] text-2xl font-black md:text-3xl">
+              Have a family event to share?
+            </h2>
 
-              <h4 className="font-semibold text-sm uppercase tracking-widest text-white-400 mb-4">
-                Explore
-              </h4>
-
-              <ul className="space-y-2">
-
-                {[
-                  'Home',
-                  'Our Family',
-                  'Gallery',
-                  'Events',
-                  'Stories',
-                  'Portal',
-                ].map((link) => (
-
-                  <li key={link}>
-
-                    <button
-                      onClick={() =>
-                        handleNav(
-                          link
-                            .toLowerCase()
-                            .replace('our ', '')
-                        )
-                      }
-                      className="text-gray-400 hover:text-blue-400 text-sm transition-colors"
-                    >
-                      {link}
-                    </button>
-
-                  </li>
-
-                ))}
-
-              </ul>
-
-            </div>
-
-            {/* Contact */}
-            <div>
-
-              <h4 className="font-semibold text-sm uppercase tracking-widest text-gray-400 mb-4">
-                Connect
-              </h4>
-
-              <ul className="space-y-2 text-sm text-gray-400">
-
-                <li>Ve-Gbodome, Ghana</li>
-
-                <li>family@kornu.family</li>
-
-                <li className="pt-2">
-
-                  <button
-                    onClick={() => handleNav('signin')}
-                    className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-full text-xs font-semibold transition-colors"
-                  >
-                    Sign In to Portal
-                  </button>
-
-                </li>
-
-              </ul>
-
-            </div>
-
-          </div>
-
-          <div className="border-t border-gray-800 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-
-            <p className="text-gray-500 text-sm">
-              © 2025 The Kornu Family Website. All rights reserved. Made with for our family.
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-white/70">
+              Sign in to the family portal to submit
+              a new event for the family calendar and
+              keep everyone connected.
             </p>
 
+            <button
+              onClick={() =>
+                handleNav('portal')
+              }
+              className="mt-7 inline-flex items-center gap-2 rounded-full bg-[#51A2FF] px-7 py-3 text-sm font-black text-[#023570] transition hover:-translate-y-0.5 hover:bg-white"
+            >
+              <Calendar size={16} />
+              Submit an Event
+            </button>
 
           </div>
+        </section>
 
-        </div>
+      </main>
 
-      </footer>
+      {/* ========================================================
+          SHARED FOOTER
+      ========================================================= */}
+
+      <Footer />
 
     </div>
   );

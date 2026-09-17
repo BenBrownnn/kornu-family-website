@@ -61,7 +61,7 @@ export default function RequestAccessPage() {
 
           <button
             onClick={() => setCurrentPage('signin')}
-            className="w-full bg-gradient-to-r from-orange-500 to-orange-600 text-white py-3.5 rounded-xl font-semibold hover:from-orange-600 hover:to-red-600 transition-all"
+            className="w-full bg-gradient-to-r from-blue-500 to-purple-600 text-white py-3.5 rounded-xl font-semibold hover:from-blue-600 hover:to-purple-600 transition-all"
           >
             Return to Sign In
           </button>
@@ -71,7 +71,7 @@ export default function RequestAccessPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-white to-purple-50 p-4 pt-28 pb-12">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 p-4 pt-28 pb-12">
       <div className="w-full max-w-2xl mx-auto">
         <button
           onClick={() => setCurrentPage('signin')}
@@ -83,7 +83,7 @@ export default function RequestAccessPage() {
 
         <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-10">
           <div className="mb-8">
-            <div className="text-sm font-semibold text-orange-500 uppercase tracking-widest mb-2">
+            <div className="text-sm font-semibold text-blue-500 uppercase tracking-widest mb-2">
               Family Portal
             </div>
 

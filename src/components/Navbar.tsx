@@ -6,7 +6,8 @@ import {
   Image,
   Calendar,
   BookOpen,
-  Shield,
+  LockKeyhole,
+  LockKeyholeOpen,
   LogIn,
   LogOut,
   Menu,
@@ -20,7 +21,7 @@ const navItems = [
   { id: 'gallery', label: 'Gallery', icon: Image },
   { id: 'events', label: 'Events', icon: Calendar },
   { id: 'stories', label: 'Stories', icon: BookOpen },
-  { id: 'portal', label: 'Portal', icon: Shield },
+  { id: 'portal', label: 'Portal', icon: LockKeyhole },
 ];
 
 export default function Navbar() {
@@ -37,17 +38,25 @@ export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setScrolled(window.scrollY > 20);
+    const handleScroll = () => {
+      setScrolled(window.scrollY > 20);
+    };
 
     window.addEventListener('scroll', handleScroll);
 
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+    };
   }, []);
 
   const handleNav = (page: string) => {
     setCurrentPage(page);
     setMobileMenuOpen(false);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth',
+    });
   };
 
   return (
@@ -62,7 +71,9 @@ export default function Navbar() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-[70px]">
 
-            {/* Logo */}
+            {/* =========================
+                LOGO
+            ========================== */}
             <button
               onClick={() => handleNav('home')}
               className="flex items-center gap-3 group"
@@ -74,26 +85,29 @@ export default function Navbar() {
                   className="w-full h-full object-cover"
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
+
                     target.onerror = null;
                     target.style.display = 'none';
 
-                    const parent = target.parentElement!;
+                    const parent = target.parentElement;
 
-                    parent.classList.add(
-                      'bg-white',
-                      'flex',
-                      'items-center',
-                      'justify-center'
-                    );
+                    if (parent) {
+                      parent.classList.add(
+                        'bg-white',
+                        'flex',
+                        'items-center',
+                        'justify-center'
+                      );
 
-                    parent.innerHTML =
-                      '<span style="color:#023570;font-weight:900;font-size:1.2rem;font-family:serif;">K</span>';
+                      parent.innerHTML =
+                        '<span style="color:#023570;font-weight:900;font-size:1.2rem;font-family:serif;">K</span>';
+                    }
                   }}
                 />
               </div>
 
               <div className="text-left">
-                <div className="font-bold text-[#023570] text-base leading-tight font-playfair">
+                <div className="font-bold text-[#023570] text-base leading-tight font-montserrat">
                   The Kornu
                 </div>
 
@@ -103,41 +117,54 @@ export default function Navbar() {
               </div>
             </button>
 
-            {/* Desktop Nav */}
+            {/* =========================
+                DESKTOP NAVIGATION
+            ========================== */}
             <div className="hidden md:flex items-center gap-1">
-              {navItems.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => handleNav(id)}
-                  className={`nav-pill flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
-                    currentPage === id
-                      ? 'bg-[#023570]/10 text-[#023570] font-semibold'
-                      : 'text-[#52667A] hover:text-[#023570] hover:bg-[#51A2FF]/10'
-                  }`}
-                >
-                  <Icon
-                    size={14}
-                    strokeWidth={currentPage === id ? 2.5 : 2}
-                  />
+              {navItems.map(({ id, label, icon: Icon }) => {
+                const PortalIcon =
+                  isAuthenticated && id === 'portal'
+                    ? LockKeyholeOpen
+                    : Icon;
 
-                  {label}
-                </button>
-              ))}
+                return (
+                  <button
+                    key={id}
+                    onClick={() => handleNav(id)}
+                    className={`nav-pill flex items-center gap-1.5 px-4 py-2 text-sm font-medium rounded-lg transition-all duration-200 ${
+                      currentPage === id
+                        ? 'bg-[#023570]/10 text-[#023570] font-semibold'
+                        : 'text-[#52667A] hover:text-[#023570] hover:bg-[#51A2FF]/10'
+                    }`}
+                  >
+                    <PortalIcon
+                      size={14}
+                      strokeWidth={currentPage === id ? 2.5 : 2}
+                      className="transition-all duration-300"
+                    />
+
+                    {label}
+                  </button>
+                );
+              })}
             </div>
 
-            {/* Right Section */}
+            {/* =========================
+                RIGHT SECTION
+            ========================== */}
             <div className="flex items-center gap-3">
+
               {isAuthenticated ? (
                 <div className="hidden md:flex items-center gap-3">
 
                   {/* User */}
                   <div className="flex items-center gap-2 bg-white/70 border border-[#51A2FF]/20 px-3 py-1.5 rounded-xl shadow-sm">
                     <div className="w-7 h-7 rounded-full bg-[#023570] flex items-center justify-center text-white text-xs font-bold">
-                      {currentUser?.name.charAt(0)}
+                      {currentUser?.name?.charAt(0)}
                     </div>
 
                     <span className="text-sm font-medium text-[#102A43]">
-                      {currentUser?.name.split(' ')[0]}
+                      {currentUser?.name?.split(' ')[0]}
                     </span>
                   </div>
 
@@ -151,9 +178,11 @@ export default function Navbar() {
                   </button>
                 </div>
               ) : (
+                /* Desktop Sign In */
                 <button
                   onClick={() => handleNav('signin')}
-className="hidden md:flex items-center gap-2 bg-[#023570] text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-md shadow-[#023570]/20 hover:bg-[#034B91] hover:shadow-[#51A2FF]/30 hover:-translate-y-0.5 transition-all duration-300"                >
+                  className="hidden md:flex items-center gap-2 bg-[#023570] text-white px-5 py-2.5 rounded-full text-sm font-semibold shadow-md shadow-[#023570]/20 hover:bg-[#034B91] hover:shadow-[#51A2FF]/30 hover:-translate-y-0.5 transition-all duration-300"
+                >
                   <LogIn size={14} />
                   Sign In
                 </button>
@@ -163,6 +192,7 @@ className="hidden md:flex items-center gap-2 bg-[#023570] text-white px-5 py-2.5
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
                 className="md:hidden p-2 rounded-full text-[#023570] hover:text-[#51A2FF] hover:bg-[#51A2FF]/10 transition-all"
+                aria-label="Toggle menu"
               >
                 {mobileMenuOpen ? (
                   <X size={22} />
@@ -174,37 +204,53 @@ className="hidden md:flex items-center gap-2 bg-[#023570] text-white px-5 py-2.5
           </div>
         </div>
 
-        {/* Mobile Menu */}
+        {/* =========================
+            MOBILE MENU
+        ========================== */}
         {mobileMenuOpen && (
           <div className="md:hidden bg-[#F5F9FF] border-t border-[#51A2FF]/20 shadow-lg">
             <div className="px-4 py-3 space-y-1">
 
-              {navItems.map(({ id, label, icon: Icon }) => (
-                <button
-                  key={id}
-                  onClick={() => handleNav(id)}
-                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
-                    currentPage === id
-                      ? 'bg-[#023570]/10 text-[#023570] font-semibold'
-                      : 'text-[#102A43] hover:bg-[#D0E6FF] hover:text-[#023570]'
-                  }`}
-                >
-                  <Icon size={16} />
+              {/* Mobile Navigation */}
+              {navItems.map(({ id, label, icon: Icon }) => {
+                const PortalIcon =
+                  isAuthenticated && id === 'portal'
+                    ? LockKeyholeOpen
+                    : Icon;
 
-                  {label}
-
-                  <ChevronRight
-                    size={14}
-                    className={`ml-auto ${
+                return (
+                  <button
+                    key={id}
+                    onClick={() => handleNav(id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
                       currentPage === id
-                        ? 'text-[#51A2FF]'
-                        : 'text-[#9BB7D1]'
+                        ? 'bg-[#023570]/10 text-[#023570] font-semibold'
+                        : 'text-[#102A43] hover:bg-[#D0E6FF] hover:text-[#023570]'
                     }`}
-                  />
-                </button>
-              ))}
+                  >
+                    <PortalIcon
+                      size={16}
+                      strokeWidth={currentPage === id ? 2.5 : 2}
+                      className="transition-all duration-300"
+                    />
 
-              {/* Mobile Authentication */}
+                    {label}
+
+                    <ChevronRight
+                      size={14}
+                      className={`ml-auto ${
+                        currentPage === id
+                          ? 'text-[#51A2FF]'
+                          : 'text-[#9BB7D1]'
+                      }`}
+                    />
+                  </button>
+                );
+              })}
+
+              {/* =========================
+                  MOBILE AUTHENTICATION
+              ========================== */}
               <div className="pt-2 border-t border-[#023570]/10">
                 {isAuthenticated ? (
                   <button
@@ -217,13 +263,14 @@ className="hidden md:flex items-center gap-2 bg-[#023570] text-white px-5 py-2.5
                 ) : (
                   <button
                     onClick={() => handleNav('signin')}
-                    className="w-full flex items-center justify-center gap-2 bg-[#023570] hover:bg-[#51a2ff] text-white px-4 py-3 rounded-xl text-sm font-semibold shadow-md shadow-[#023570]/20 transition-all"
+                    className="w-full flex items-center justify-center gap-2 bg-[#023570] hover:bg-[#51A2FF] text-white px-4 py-3 rounded-full text-sm font-semibold shadow-md shadow-[#023570]/20 transition-all"
                   >
                     <LogIn size={16} />
                     Sign In to Portal
                   </button>
                 )}
               </div>
+
             </div>
           </div>
         )}
