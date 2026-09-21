@@ -174,7 +174,7 @@ export default function Footer() {
         <div className="border-t border-gray-800 pt-8">
 
           <p className="text-gray-500 text-sm">
-            © 2025 The Kornu Family Website. All rights reserved. Made with
+            © 2026 The Kornu Family Website. All rights reserved. Made with
             for our family.
           </p>
 

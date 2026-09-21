@@ -703,6 +703,8 @@ export default function GalleryPage() {
                 Explore Memories
               </button>
 
+              
+
               {isAuthenticated && (
                 <button
                   type="button"

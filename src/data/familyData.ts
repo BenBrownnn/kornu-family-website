@@ -209,38 +209,38 @@ export const familyEvents: FamilyEvent[] = [
 export const familyStories: FamilyStory[] = [
   {
     id: '1',
-    title: 'The Day Grandfather Kweku Walked 40 Miles for Love',
+    title: 'The Day Grandfather Yao Walked 20 Miles for Love',
     author: 'Kofi Kornu',
-    date: '2024-12-01',
-    excerpt: 'Long before cars were common in our village, grandfather Kweku walked from Kumasi to Accra — 40 miles on foot — just to ask grandmother Abena\'s father for her hand in marriage.',
-    content: `Long before cars were common in our village, grandfather Kweku walked from Kumasi to Accra — 40 miles on foot — just to ask grandmother Abena\'s father for her hand in marriage.
+    date: '2026-12-01',
+    excerpt: 'Long before cars were common in our village, grandfather Kweku walked from Ve to Kpando 20 miles on foot just to ask grandmother AKosua\'s father for her hand in marriage.',
+    content: `Long before cars were common in our village, grandfather Kweku walked from Ve to Kpando 20 miles on footjust to ask grandmother Akosua\'s father for her hand in marriage.
 
-It was the rainy season of 1968. He had saved for three months to buy fabric for a proper outfit. When he finally arrived, covered in mud but standing tall, Grandma Abena's father looked at him and said: "Any man who walks 40 miles for my daughter deserves her."
+It was the rainy season of 1628. He had saved for three months to buy fabric for a proper outfit. When he finally arrived, covered in mud but standing tall, Grandma Akosua's father looked at him and said: "Any man who walks 40 miles for my daughter deserves her."
 
 That evening, they sat under the great mango tree and grandfather told grandmother about his dream: to build a family that would stand for generations. A family of love, dignity, and service.
 
 Today, that dream lives in every one of us. The Kornu family is his greatest masterpiece.`,
-    image: '/images/family-tree.jpg',
-    likes: 48,
-    comments: 12,
+    image: '/images/Long Walk.webp',
+    likes: 1,
+    comments: 0,
     tags: ['Heritage', 'Love Story', 'Grandfather'],
   },
   {
     id: '2',
-    title: 'How Mama Abena\'s Garden Saved the Village',
-    author: 'Ama Kornu-Mensah',
+    title: 'How Mama Akosua\'s Garden Saved the Village',
+    author: 'Ama Kornu',
     date: '2024-10-15',
-    excerpt: 'In 1984, when drought devastated crops across the region, Mama Abena\'s medicinal garden became the village\'s lifeline. Her knowledge of plants and healing fed and healed dozens of families.',
-    content: `In 1984, when drought devastated crops across the region, Mama Abena's medicinal garden became the village's lifeline.
+    excerpt: 'In 1964, when drought devastated crops across the region, Mama Akosua\'s medicinal garden became the village\'s lifeline. Her knowledge of plants and healing fed and healed dozens of families.',
+    content: `In 1964, when drought devastated crops across the region, Mama Akosua's medicinal garden became the village's lifeline.
 
 What most people didn't know was that for years, our grandmother had quietly cultivated an extensive garden of both food plants and medicinal herbs. She learned from her own grandmother, who was a well-known healer.
 
 During those difficult months, she shared her harvest freely. She prepared traditional medicines for the sick and taught young women which plants were safe to eat. The village elders still talk about it.
 
-"Abena's garden didn't just grow plants," one elder told me recently. "It grew hope."`,
-    image: '/images/gallery3.jpg',
-    likes: 62,
-    comments: 18,
+"Akosua's garden didn't just grow plants," one elder told me recently. "It grew hope."`,
+    image: '/images/Garden.webp',
+    likes: 1,
+    comments: 0,
     tags: ['Heritage', 'Grandmother', 'Resilience'],
   },
   {
@@ -248,7 +248,7 @@ During those difficult months, she shared her harvest freely. She prepared tradi
     title: 'Growing Up Kornu: Lessons from the Family Table',
     author: 'Kwame Kornu',
     date: '2024-09-05',
-    excerpt: 'Every Sunday, no matter where any of us were in the city, we came home. The family table was sacred — a place where problems were solved, laughter was loud, and food was always plenty.',
+    excerpt: 'Every Sunday, no matter where any of us were in the city, we came home. The family table was sacred a place where problems were solved, laughter was loud, and food was always plenty.',
     content: `Every Sunday, no matter where any of us were in the city, we came home.
 
 Dad would announce at exactly 1pm: "Food is ready!" And somehow, no matter the traffic or the distance, everyone appeared. It was almost magical.
@@ -258,9 +258,9 @@ The table was where I learned to listen. Where my sister Ama learned to debate. 
 We didn't have smartphones then. We had each other, and stories, and laughter that could be heard from the street.
 
 Those Sundays built me. They built all of us. And I carry that table wherever I go.`,
-    image: '/images/gallery2.jpg',
-    likes: 71,
-    comments: 24,
+    image: '/images/Table.webp',
+    likes: 1,
+    comments: 0,
     tags: ['Memories', 'Food', 'Family Values'],
   },
 ];

@@ -508,7 +508,7 @@ export default function HomePage() {
               <div className="relative rounded-3xl overflow-hidden shadow-2xl">
 
                 <img
-                  src="/images/family-tree.jpg"
+                  src="/images/Home.webp"
                   alt="Kornu Family Heritage"
                   className="w-full h-[450px] object-cover"
                 />
@@ -519,12 +519,12 @@ export default function HomePage() {
 
                   <div className="bg-white/90 backdrop-blur-md rounded-2xl p-4 shadow-lg">
 
-                    <p className="font-dancing text-2xl text-[#023570] leading-tight">
+                    <p className="font-dancing text-2xl text-[#51a2ff] leading-tight">
                       "A family is a circle of strength and love..."
                     </p>
 
                     <p className="text-sm text-[#52667A] mt-1">
-                      — Granpa John Lily Kornu
+                      — Granpa Kornu
                     </p>
 
                   </div>
@@ -584,8 +584,8 @@ export default function HomePage() {
 
               <p className="section-subtitle mb-6">
                 The Kornu family traces its roots to the vibrant heart of
-                Ve-Gbodome, Ghana. Founded by Granpa John Lily Kornu and Mama
-                Abena in 1946, our family has grown across four generations
+                Ve-Gbodome, Ghana. Founded by Great-Grand Dad Togbui Yao Kornu and Mama
+                Akosua Fiado in 1649, our family has grown across four generations
                 and eight countries.
               </p>
 
