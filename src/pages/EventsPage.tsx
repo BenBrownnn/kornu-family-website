@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { familyEvents } from '../data/familyData';
 import {
@@ -101,7 +102,7 @@ const eventTypeIcons: Record<EventType, LucideIcon> = {
 };
 
 /* ============================================================
-   NORMALIZE LOCAL EVENTS
+   NORMALIZE EVENTS
 ============================================================ */
 
 const normalizeEvent = (
@@ -146,57 +147,113 @@ export default function EventsPage() {
   >({});
 
   /* ==========================================================
-     FETCH EVENTS FROM SUPABASE
+     ONLINE / OFFLINE STATUS
   ========================================================== */
 
+  const [isOnline, setIsOnline] = useState(
+    typeof navigator !== 'undefined'
+      ? navigator.onLine
+      : true
+  );
+
   useEffect(() => {
-    const fetchEvents = async () => {
-      const { data, error } = await supabase
-        .from('events')
-        .select('*')
-        .order('date', {
-          ascending: true,
-        });
+    const handleOnline = () => setIsOnline(true);
+    const handleOffline = () => setIsOnline(false);
 
-      if (error) {
-        console.error(
-          'Error fetching family events:',
-          error
-        );
-        return;
-      }
+    window.addEventListener(
+      'online',
+      handleOnline
+    );
 
-      if (!data) {
-        setDbEvents([]);
-        return;
-      }
+    window.addEventListener(
+      'offline',
+      handleOffline
+    );
 
-      const normalizedEvents: FamilyEvent[] = data.map(
-        (event) =>
-          normalizeEvent({
-            id: event.id,
-            title: event.title,
-            date: event.date,
-            type: event.type,
-            location: event.location,
-            description: event.description,
-            image: event.image,
-            rsvpCount: event.rsvpCount,
-          })
+    return () => {
+      window.removeEventListener(
+        'online',
+        handleOnline
       );
 
-      setDbEvents(normalizedEvents);
+      window.removeEventListener(
+        'offline',
+        handleOffline
+      );
     };
-
-    fetchEvents();
   }, []);
 
   /* ==========================================================
-     COMBINE DATABASE + LOCAL EVENTS
+     FETCH DATABASE EVENTS
+     
+     Local events remain available even if Supabase is
+     unavailable or the user is offline.
   ========================================================== */
 
-  const localEvents: FamilyEvent[] = familyEvents.map(
-    (event) =>
+  useEffect(() => {
+    let mounted = true;
+
+    const fetchEvents = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('events')
+          .select('*')
+          .order('date', {
+            ascending: true,
+          });
+
+        if (!mounted) return;
+
+        if (error) {
+          console.warn(
+            'Unable to load database events:',
+            error.message
+          );
+          return;
+        }
+
+        if (!data) {
+          return;
+        }
+
+        const normalizedEvents: FamilyEvent[] =
+          data.map((event: any) =>
+            normalizeEvent({
+              id: event.id,
+              title: event.title,
+              date: event.date,
+              type: event.type,
+              location: event.location,
+              description: event.description,
+              image: event.image,
+              rsvpCount:
+                event.rsvpCount ??
+                event.rsvp_count,
+            })
+          );
+
+        setDbEvents(normalizedEvents);
+      } catch (error) {
+        console.warn(
+          'Events could not be loaded:',
+          error
+        );
+      }
+    };
+
+    fetchEvents();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  /* ==========================================================
+     LOCAL EVENTS
+  ========================================================== */
+
+  const localEvents: FamilyEvent[] =
+    familyEvents.map((event) =>
       normalizeEvent({
         id: event.id,
         title: event.title,
@@ -207,12 +264,24 @@ export default function EventsPage() {
         image: event.image,
         rsvpCount: event.rsvpCount,
       })
-  );
+    );
+
+  /* ==========================================================
+     COMBINE EVENTS
+     
+     Remove duplicate event IDs so an event existing in both
+     Supabase and local fallback data only appears once.
+  ========================================================== */
 
   const allEvents: FamilyEvent[] = [
     ...dbEvents,
     ...localEvents,
-  ];
+  ].filter(
+    (event, index, array) =>
+      array.findIndex(
+        (item) => item.id === event.id
+      ) === index
+  );
 
   /* ==========================================================
      NAVIGATION
@@ -229,11 +298,47 @@ export default function EventsPage() {
       signin: 'signin',
     };
 
-    setCurrentPage(pageMap[page] ?? 'home');
+    const destination =
+      pageMap[page] ?? 'home';
+
+    setCurrentPage(destination);
 
     window.scrollTo({
       top: 0,
       behavior: 'smooth',
+    });
+  };
+
+  /* ==========================================================
+     VIEW ALL EVENTS
+     
+     IMPORTANT:
+     - Signed-in users stay on Events and see all events.
+     - Unsigned users are redirected to Sign In.
+     - This does not depend on internet connectivity.
+  ========================================================== */
+
+  const handleViewAllEvents = () => {
+    if (!isAuthenticated) {
+      setCurrentPage('signin');
+
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      });
+
+      return;
+    }
+
+    setActiveFilter('All');
+
+    requestAnimationFrame(() => {
+      document
+        .getElementById('events-list')
+        ?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
     });
   };
 
@@ -284,6 +389,17 @@ export default function EventsPage() {
   const toggleAttendeesList = async (
     eventId: string
   ) => {
+    if (!isAuthenticated) {
+      setCurrentPage('signin');
+
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth',
+      });
+
+      return;
+    }
+
     if (expandedEvent === eventId) {
       setExpandedEvent(null);
       return;
@@ -295,40 +411,72 @@ export default function EventsPage() {
       return;
     }
 
+    /* --------------------------------------------------------
+       Do not attempt Supabase attendee lookup offline.
+    -------------------------------------------------------- */
+
+    if (!isOnline) {
+      setAttendees((previous) => ({
+        ...previous,
+        [eventId]: [],
+      }));
+
+      return;
+    }
+
     setLoadingAttendees(eventId);
 
-    const { data, error } = await supabase
-      .from('rsvps')
-      .select('profiles ( name, role )')
-      .eq('event_id', eventId);
+    try {
+      const { data, error } = await supabase
+        .from('rsvps')
+        .select('profiles ( name, role )')
+        .eq('event_id', eventId);
 
-    if (error) {
+      if (error) {
+        console.error(
+          'Error loading event attendees:',
+          error
+        );
+
+        setAttendees((previous) => ({
+          ...previous,
+          [eventId]: [],
+        }));
+
+        setLoadingAttendees(null);
+
+        return;
+      }
+
+      if (data) {
+        const names: Attendee[] = data
+          .map(
+            (rsvp: any) => rsvp.profiles
+          )
+          .filter(Boolean)
+          .map((profile: any) => ({
+            name:
+              profile.name ||
+              'Family Member',
+            role:
+              profile.role ||
+              'member',
+          }));
+
+        setAttendees((previous) => ({
+          ...previous,
+          [eventId]: names,
+        }));
+      }
+    } catch (error) {
       console.error(
-        'Error loading event attendees:',
+        'Unable to load attendees:',
         error
       );
 
       setAttendees((previous) => ({
         ...previous,
         [eventId]: [],
-      }));
-
-      setLoadingAttendees(null);
-      return;
-    }
-
-    if (data) {
-      const names: Attendee[] = data
-        .map((rsvp) => rsvp.profiles)
-        .filter(Boolean)
-        .map((profile: any) => ({
-          name: profile.name || 'Family Member',
-          role: profile.role || 'member',
-        }));
-
-      setAttendees((previous) => ({
-        ...previous,
-        [eventId]: names,
       }));
     }
 
@@ -352,7 +500,8 @@ export default function EventsPage() {
     allEvents.filter(
       (event) =>
         activeFilter === 'All' ||
-        event.type === activeFilter.toLowerCase()
+        event.type ===
+          activeFilter.toLowerCase()
     );
 
   /* ==========================================================
@@ -365,18 +514,24 @@ export default function EventsPage() {
     return {
       day: date.getDate(),
 
-      month: date.toLocaleDateString('en-GB', {
-        month: 'short',
-      }),
+      month: date.toLocaleDateString(
+        'en-GB',
+        {
+          month: 'short',
+        }
+      ),
 
       year: date.getFullYear(),
 
-      full: date.toLocaleDateString('en-GB', {
-        weekday: 'long',
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric',
-      }),
+      full: date.toLocaleDateString(
+        'en-GB',
+        {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        }
+      ),
     };
   };
 
@@ -384,7 +539,9 @@ export default function EventsPage() {
      DAYS UNTIL EVENT
   ========================================================== */
 
-  const getDaysUntil = (dateStr: string) => {
+  const getDaysUntil = (
+    dateStr: string
+  ) => {
     const today = new Date();
 
     today.setHours(0, 0, 0, 0);
@@ -394,7 +551,8 @@ export default function EventsPage() {
     event.setHours(0, 0, 0, 0);
 
     const diff = Math.ceil(
-      (event.getTime() - today.getTime()) /
+      (event.getTime() -
+        today.getTime()) /
         (1000 * 60 * 60 * 24)
     );
 
@@ -420,12 +578,16 @@ export default function EventsPage() {
     > = {};
 
     events.forEach((event) => {
-      const monthKey = new Date(
-        event.date
-      ).toLocaleDateString('en-GB', {
-        month: 'long',
-        year: 'numeric',
-      });
+      const monthKey =
+        new Date(
+          event.date
+        ).toLocaleDateString(
+          'en-GB',
+          {
+            month: 'long',
+            year: 'numeric',
+          }
+        );
 
       if (!groups[monthKey]) {
         groups[monthKey] = [];
@@ -447,13 +609,12 @@ export default function EventsPage() {
   return (
     <div className="min-h-screen bg-[#FAF5EE] text-[#102A43]">
 
-      {/* ========================================================
+      {/* ======================================================
           HERO
-      ========================================================= */}
+      ====================================================== */}
 
       <section className="relative min-h-[540px] overflow-hidden text-white">
 
-        {/* Background image */}
         <img
           src="/images/gallery-3.webp"
           alt=""
@@ -461,43 +622,31 @@ export default function EventsPage() {
           className="absolute inset-0 h-full w-full object-cover"
         />
 
-        {/* Main blue overlay */}
         <div className="absolute inset-0 bg-[#023570]/55" />
 
-        {/* Blue / purple gradient */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#023570]/90 via-[#023570]/50 to-[#2E1065]/65" />
 
-        {/* Bottom fade */}
         <div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-[#FAF5EE] to-transparent" />
 
-        {/* Decorative glow */}
         <div className="absolute -right-32 -top-32 h-96 w-96 rounded-full bg-[#51A2FF]/20 blur-3xl" />
 
         <div className="absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-[#6A1B9A]/20 blur-3xl" />
 
-        {/* Hero content */}
         <div className="relative z-10 mx-auto flex min-h-[540px] max-w-6xl items-center px-4 py-20">
 
           <div className="max-w-3xl">
 
-            {/* Back */}
             <button
-              onClick={() => handleNav('home')}
+              type="button"
+              onClick={() =>
+                handleNav('home')
+              }
               className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/20"
             >
               <ChevronLeft size={16} />
               Back to Home
             </button>
 
-            {/* Eyebrow 
-            
-            <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-2 text-xs font-bold uppercase tracking-[0.2em] text-blue-100 backdrop-blur-md">
-              <Calendar size={15} />
-              Family Calendar
-            </div>
-            */}
-
-            {/* Heading */}
             <h1 className="font-['Montserrat'] text-4xl font-black leading-tight tracking-tight md:text-6xl lg:text-7xl">
               Family
               <span className="block text-[#51A2FF]">
@@ -505,24 +654,17 @@ export default function EventsPage() {
               </span>
             </h1>
 
-            {/* Description */}
             <p className="mt-6 max-w-2xl text-base leading-8 text-blue-100 md:text-lg">
               Stay connected with every gathering,
-              celebration, milestone, and special moment
-              in the Kornu family calendar.
+              celebration, milestone, and special
+              moment in the Kornu family calendar.
             </p>
 
-            {/* Hero actions */}
             <div className="mt-8 flex flex-wrap gap-3">
 
               <button
-                onClick={() => {
-                  document
-                    .getElementById('events-list')
-                    ?.scrollIntoView({
-                      behavior: 'smooth',
-                    });
-                }}
+                type="button"
+                onClick={handleViewAllEvents}
                 className="inline-flex items-center gap-2 rounded-full bg-[#51A2FF] px-6 py-3 text-sm font-bold text-[#023570] shadow-lg transition hover:-translate-y-0.5 hover:bg-white"
               >
                 <Calendar size={17} />
@@ -530,7 +672,10 @@ export default function EventsPage() {
               </button>
 
               <button
-                onClick={() => handleNav('portal')}
+                type="button"
+                onClick={() =>
+                  handleNav('portal')
+                }
                 className="inline-flex items-center gap-2 rounded-full border border-white/30 bg-white/10 px-6 py-3 text-sm font-bold text-white backdrop-blur-md transition hover:bg-white/20"
               >
                 <Users size={17} />
@@ -538,27 +683,25 @@ export default function EventsPage() {
               </button>
 
             </div>
-
           </div>
         </div>
       </section>
 
-      {/* ========================================================
+      {/* ======================================================
           MAIN CONTENT
-      ========================================================= */}
+      ====================================================== */}
 
       <main
         id="events-list"
         className="mx-auto max-w-5xl px-4 py-16"
       >
 
-        {/* ======================================================
-            FILTERS
-        ======================================================= */}
+        {/* FILTERS */}
 
         <div className="mb-12">
 
           <div className="mb-4 text-center">
+
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-[#52667A]">
               Browse the calendar
             </p>
@@ -566,11 +709,13 @@ export default function EventsPage() {
             <h2 className="mt-2 font-['Montserrat'] text-2xl font-black text-[#023570]">
               Upcoming & Family Events
             </h2>
+
           </div>
 
           <div className="flex flex-wrap justify-center gap-2.5">
 
             {types.map((type) => {
+
               const isActive =
                 activeFilter === type;
 
@@ -583,6 +728,7 @@ export default function EventsPage() {
 
               return (
                 <button
+                  type="button"
                   key={type}
                   onClick={() =>
                     setActiveFilter(type)
@@ -593,7 +739,10 @@ export default function EventsPage() {
                       : 'bg-white text-[#023570] ring-1 ring-[#D0E6FF] hover:bg-[#E9D5FF] hover:text-[#6A1B9A]'
                   }`}
                 >
-                  {Icon && <Icon size={14} />}
+                  {Icon && (
+                    <Icon size={14} />
+                  )}
+
                   {type}
                 </button>
               );
@@ -602,374 +751,395 @@ export default function EventsPage() {
           </div>
         </div>
 
-        {/* ======================================================
+        {/* ====================================================
             EVENTS LIST
-        ======================================================= */}
+        ==================================================== */}
 
         <div className="space-y-10">
 
           {Object.entries(
             groupedEvents
-          ).map(([month, monthEvents]) => (
-            <section
-              key={month}
-              className="mb-10"
-            >
+          ).map(
+            ([month, monthEvents]) => (
 
-              {/* Month heading */}
-              <div className="mb-5 flex items-center gap-4">
+              <section
+                key={month}
+                className="mb-10"
+              >
 
-                <h3 className="whitespace-nowrap text-sm font-bold uppercase tracking-[0.2em] text-[#6A1B9A]">
-                  {month}
-                </h3>
+                <div className="mb-5 flex items-center gap-4">
 
-                <div className="h-px flex-1 bg-[#D0E6FF]" />
+                  <h3 className="whitespace-nowrap text-sm font-bold uppercase tracking-[0.2em] text-[#6A1B9A]">
+                    {month}
+                  </h3>
 
-              </div>
+                  <div className="h-px flex-1 bg-[#D0E6FF]" />
 
-              {/* Events */}
-              <div className="space-y-6">
+                </div>
 
-                {monthEvents.map((event) => {
-                  const dateInfo =
-                    formatDate(event.date);
+                <div className="space-y-6">
 
-                  const daysUntil =
-                    getDaysUntil(event.date);
+                  {monthEvents.map(
+                    (event) => {
 
-                  const colors =
-                    eventTypeColors[event.type] ||
-                    eventTypeColors.celebration;
+                      const dateInfo =
+                        formatDate(
+                          event.date
+                        );
 
-                  const EventIcon =
-                    eventTypeIcons[event.type] ||
-                    Calendar;
+                      const daysUntil =
+                        getDaysUntil(
+                          event.date
+                        );
 
-                  const hasRsvped =
-                    rsvpedEvents.includes(
-                      event.id
-                    );
+                      const colors =
+                        eventTypeColors[
+                          event.type
+                        ] ||
+                        eventTypeColors.celebration;
 
-                  return (
-                    <article
-                      key={event.id}
-                      className={`group overflow-hidden rounded-3xl border ${colors.border} bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl`}
-                    >
+                      const EventIcon =
+                        eventTypeIcons[
+                          event.type
+                        ] ||
+                        Calendar;
 
-                      <div className="flex flex-col sm:flex-row">
+                      const hasRsvped =
+                        rsvpedEvents.includes(
+                          event.id
+                        );
 
-                        {/* =================================================
-                            DATE COLUMN
-                        ================================================== */}
+                      return (
+                        <article
+                          key={event.id}
+                          className={`group overflow-hidden rounded-3xl border ${colors.border} bg-white shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-xl`}
+                        >
 
-                        <div className="relative flex w-full flex-shrink-0 flex-row items-center justify-center gap-4 overflow-hidden bg-[#023570] px-5 py-5 text-white sm:w-28 sm:flex-col sm:gap-0 sm:py-7">
+                          <div className="flex flex-col sm:flex-row">
 
-                          <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[#51A2FF]/20 blur-xl" />
+                            {/* DATE */}
 
-                          <div className="relative text-xs font-bold uppercase tracking-[0.15em] text-blue-100">
-                            {dateInfo.month}
-                          </div>
+                            <div className="relative flex w-full flex-shrink-0 flex-row items-center justify-center gap-4 overflow-hidden bg-[#023570] px-5 py-5 text-white sm:w-28 sm:flex-col sm:gap-0 sm:py-7">
 
-                          <div className="relative font-['Montserrat'] text-4xl font-black leading-none sm:mt-1">
-                            {dateInfo.day}
-                          </div>
+                              <div className="absolute -right-8 -top-8 h-24 w-24 rounded-full bg-[#51A2FF]/20 blur-xl" />
 
-                          <div className="relative text-xs text-blue-200 sm:mt-1">
-                            {dateInfo.year}
-                          </div>
-
-                        </div>
-
-                        {/* =================================================
-                            EVENT CONTENT
-                        ================================================== */}
-
-                        <div className="flex-1 p-5 md:p-7">
-
-                          <div className="flex items-start justify-between gap-5">
-
-                            <div className="min-w-0 flex-1">
-
-                              {/* Badges */}
-                              <div className="mb-3 flex flex-wrap items-center gap-2">
-
-                                <span
-                                  className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${colors.bg} ${colors.text}`}
-                                >
-                                  <EventIcon size={13} />
-                                  {event.type
-                                    .charAt(0)
-                                    .toUpperCase() +
-                                    event.type.slice(
-                                      1
-                                    )}
-                                </span>
-
-                                <span
-                                  className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                                    daysUntil ===
-                                    'Past'
-                                      ? 'bg-gray-100 text-gray-500'
-                                      : daysUntil.includes(
-                                          '!'
-                                        )
-                                      ? 'bg-[#DCE7DC] text-[#3D5A3D]'
-                                      : 'bg-[#D0E6FF] text-[#023570]'
-                                  }`}
-                                >
-                                  <Clock size={11} />
-                                  {daysUntil}
-                                </span>
-
+                              <div className="relative text-xs font-bold uppercase tracking-[0.15em] text-blue-100">
+                                {dateInfo.month}
                               </div>
 
-                              {/* Title */}
-                              <h3 className="font-['Montserrat'] text-xl font-black text-[#102A43] md:text-2xl">
-                                {event.title}
-                              </h3>
-
-                              {/* Metadata */}
-                              <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#52667A]">
-
-                                <div className="flex items-center gap-1.5">
-                                  <Calendar
-                                    size={14}
-                                    className="flex-shrink-0 text-[#51A2FF]"
-                                  />
-
-                                  <span>
-                                    {dateInfo.full}
-                                  </span>
-                                </div>
-
-                                <div className="flex items-center gap-1.5">
-                                  <MapPin
-                                    size={14}
-                                    className="flex-shrink-0 text-[#51A2FF]"
-                                  />
-
-                                  <span>
-                                    {event.location}
-                                  </span>
-                                </div>
-
-                                {event.rsvpCount !==
-                                  undefined && (
-                                  <span className="font-semibold text-[#6A1B9A]">
-                                    {event.rsvpCount +
-                                      (hasRsvped
-                                        ? 1
-                                        : 0)}{' '}
-                                    attending
-                                  </span>
-                                )}
-
+                              <div className="relative font-['Montserrat'] text-4xl font-black leading-none sm:mt-1">
+                                {dateInfo.day}
                               </div>
 
-                              {/* Description */}
-                              {event.description && (
-                                <p className="mt-4 max-w-2xl text-sm leading-7 text-[#52667A]">
-                                  {event.description}
-                                </p>
-                              )}
+                              <div className="relative text-xs text-blue-200 sm:mt-1">
+                                {dateInfo.year}
+                              </div>
 
                             </div>
 
-                            {/* Event image */}
-                            {event.image && (
-                              <div className="hidden h-28 w-32 flex-shrink-0 overflow-hidden rounded-2xl ring-1 ring-[#D0E6FF] md:block">
+                            {/* EVENT CONTENT */}
 
-                                <img
-                                  src={event.image}
-                                  alt={event.title}
-                                  className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
-                                  onError={(
-                                    event
-                                  ) => {
-                                    event.currentTarget.style.display =
-                                      'none';
-                                  }}
-                                />
+                            <div className="flex-1 p-5 md:p-7">
 
-                              </div>
-                            )}
+                              <div className="flex items-start justify-between gap-5">
 
-                          </div>
+                                <div className="min-w-0 flex-1">
 
-                          {/* =================================================
-                              ACTIONS
-                          ================================================== */}
+                                  <div className="mb-3 flex flex-wrap items-center gap-2">
 
-                          <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[#EDF2F7] pt-5">
+                                    <span
+                                      className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold ${colors.bg} ${colors.text}`}
+                                    >
+                                      <EventIcon size={13} />
 
-                            {/* RSVP */}
-                            <button
-                              onClick={() =>
-                                handleRSVP(
-                                  event.id
-                                )
-                              }
-                              className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all ${
-                                hasRsvped
-                                  ? 'border border-[#AFC4AF] bg-[#DCE7DC] text-[#3D5A3D]'
-                                  : 'bg-[#023570] text-white shadow-sm hover:bg-[#51A2FF] hover:text-[#023570]'
-                              }`}
-                            >
-                              {!isAuthenticated ? (
-                                <>
-                                  <Users
-                                    size={15}
-                                  />
-                                  Sign In to RSVP
-                                </>
-                              ) : hasRsvped ? (
-                                <>
-                                  <CheckCircle
-                                    size={15}
-                                  />
-                                  RSVP'd — Going!
-                                </>
-                              ) : (
-                                <>
-                                  <Users
-                                    size={15}
-                                  />
-                                  RSVP Now
-                                </>
-                              )}
-                            </button>
+                                      {event.type
+                                        .charAt(0)
+                                        .toUpperCase() +
+                                        event.type.slice(
+                                          1
+                                        )}
+                                    </span>
 
-                            {/* Reminder */}
-                            <button
-                              onClick={() =>
-                                toggleReminder(
-                                  event.id
-                                )
-                              }
-                              className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
-                                reminders[
-                                  event.id
-                                ]
-                                  ? 'border-[#C8A6E8] bg-[#E9D5FF] text-[#6A1B9A]'
-                                  : 'border-[#D0E6FF] text-[#023570] hover:bg-[#D0E6FF]'
-                              }`}
-                            >
-                              <Bell
-                                size={14}
-                                fill={
-                                  reminders[
-                                    event.id
-                                  ]
-                                    ? 'currentColor'
-                                    : 'none'
-                                }
-                              />
+                                    <span
+                                      className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                                        daysUntil ===
+                                        'Past'
+                                          ? 'bg-gray-100 text-gray-500'
+                                          : daysUntil.includes(
+                                              '!'
+                                            )
+                                          ? 'bg-[#DCE7DC] text-[#3D5A3D]'
+                                          : 'bg-[#D0E6FF] text-[#023570]'
+                                      }`}
+                                    >
+                                      <Clock size={11} />
+                                      {daysUntil}
+                                    </span>
 
-                              {reminders[
-                                event.id
-                              ]
-                                ? 'Reminder Set'
-                                : 'Remind Me'}
-                            </button>
+                                  </div>
 
-                            {/* Attendees */}
-                            {isAuthenticated && (
-                              <button
-                                onClick={() =>
-                                  toggleAttendeesList(
-                                    event.id
-                                  )
-                                }
-                                className="ml-auto text-sm font-semibold text-[#52667A] underline decoration-[#D0E6FF] underline-offset-4 transition hover:text-[#51a2ff]"
-                              >
-                                {expandedEvent ===
-                                event.id
-                                  ? 'Hide attendees'
-                                  : "See who's going"}
-                              </button>
-                            )}
+                                  <h3 className="font-['Montserrat'] text-xl font-black text-[#102A43] md:text-2xl">
+                                    {event.title}
+                                  </h3>
 
-                          </div>
+                                  <div className="mt-3 flex flex-wrap gap-x-5 gap-y-2 text-sm text-[#52667A]">
 
-                          {/* =================================================
-                              ATTENDEES
-                          ================================================== */}
+                                    <div className="flex items-center gap-1.5">
 
-                          {expandedEvent ===
-                            event.id && (
-                            <div className="mt-5 border-t border-[#EDF2F7] pt-5">
+                                      <Calendar
+                                        size={14}
+                                        className="flex-shrink-0 text-[#51A2FF]"
+                                      />
 
-                              {loadingAttendees ===
-                              event.id ? (
-                                <div className="flex items-center gap-2 text-sm text-[#52667A]">
-                                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#D0E6FF] border-t-[#023570]" />
-                                  Loading attendees...
-                                </div>
-                              ) : attendees[
-                                  event.id
-                                ]?.length ? (
-                                <div>
+                                      <span>
+                                        {dateInfo.full}
+                                      </span>
 
-                                  <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#52667A]">
-                                    Family members attending
-                                  </p>
+                                    </div>
 
-                                  <div className="flex flex-wrap gap-2">
+                                    <div className="flex items-center gap-1.5">
 
-                                    {attendees[
-                                      event.id
-                                    ].map(
-                                      (
-                                        person,
-                                        index
-                                      ) => (
-                                        <span
-                                          key={`${event.id}-${person.name}-${index}`}
-                                          className="inline-flex items-center gap-2 rounded-xl bg-[#F3F6FA] px-3 py-1.5 text-xs font-semibold text-[#102A43]"
-                                        >
+                                      <MapPin
+                                        size={14}
+                                        className="flex-shrink-0 text-[#51A2FF]"
+                                      />
 
-                                          <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#023570] text-[10px] font-black text-white">
-                                            {person.name
-                                              .charAt(
-                                                0
-                                              )
-                                              .toUpperCase()}
-                                          </span>
+                                      <span>
+                                        {event.location}
+                                      </span>
 
-                                          {person.name}
+                                    </div>
 
-                                        </span>
-                                      )
+                                    {event.rsvpCount !==
+                                      undefined && (
+                                      <span className="font-semibold text-[#6A1B9A]">
+                                        {event.rsvpCount +
+                                          (hasRsvped
+                                            ? 1
+                                            : 0)}{' '}
+                                        attending
+                                      </span>
                                     )}
 
                                   </div>
 
+                                  {event.description && (
+                                    <p className="mt-4 max-w-2xl text-sm leading-7 text-[#52667A]">
+                                      {
+                                        event.description
+                                      }
+                                    </p>
+                                  )}
+
                                 </div>
-                              ) : (
-                                <p className="text-sm text-[#52667A]">
-                                  No one has RSVP'd
-                                  yet — be the first!
-                                </p>
+
+                                {event.image && (
+                                  <div className="hidden h-28 w-32 flex-shrink-0 overflow-hidden rounded-2xl ring-1 ring-[#D0E6FF] md:block">
+
+                                    <img
+                                      src={
+                                        event.image
+                                      }
+                                      alt={
+                                        event.title
+                                      }
+                                      className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                                      onError={(
+                                        imageEvent
+                                      ) => {
+                                        imageEvent.currentTarget.style.display =
+                                          'none';
+                                      }}
+                                    />
+
+                                  </div>
+                                )}
+
+                              </div>
+
+                              {/* ACTIONS */}
+
+                              <div className="mt-6 flex flex-wrap items-center gap-3 border-t border-[#EDF2F7] pt-5">
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    handleRSVP(
+                                      event.id
+                                    )
+                                  }
+                                  className={`inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all ${
+                                    hasRsvped
+                                      ? 'border border-[#AFC4AF] bg-[#DCE7DC] text-[#3D5A3D]'
+                                      : 'bg-[#023570] text-white shadow-sm hover:bg-[#51A2FF] hover:text-[#023570]'
+                                  }`}
+                                >
+
+                                  {!isAuthenticated ? (
+                                    <>
+                                      <Users
+                                        size={15}
+                                      />
+                                      Sign In to RSVP
+                                    </>
+                                  ) : hasRsvped ? (
+                                    <>
+                                      <CheckCircle
+                                        size={15}
+                                      />
+                                      RSVP'd — Going!
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Users
+                                        size={15}
+                                      />
+                                      RSVP Now
+                                    </>
+                                  )}
+
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    toggleReminder(
+                                      event.id
+                                    )
+                                  }
+                                  className={`inline-flex items-center gap-2 rounded-xl border px-4 py-2.5 text-sm font-semibold transition-all ${
+                                    reminders[
+                                      event.id
+                                    ]
+                                      ? 'border-[#C8A6E8] bg-[#E9D5FF] text-[#6A1B9A]'
+                                      : 'border-[#D0E6FF] text-[#023570] hover:bg-[#D0E6FF]'
+                                  }`}
+                                >
+
+                                  <Bell
+                                    size={14}
+                                    fill={
+                                      reminders[
+                                        event.id
+                                      ]
+                                        ? 'currentColor'
+                                        : 'none'
+                                    }
+                                  />
+
+                                  {reminders[
+                                    event.id
+                                  ]
+                                    ? 'Reminder Set'
+                                    : 'Remind Me'}
+
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    toggleAttendeesList(
+                                      event.id
+                                    )
+                                  }
+                                  className="ml-auto text-sm font-semibold text-[#52667A] underline decoration-[#D0E6FF] underline-offset-4 transition hover:text-[#51A2FF]"
+                                >
+                                  {expandedEvent ===
+                                  event.id
+                                    ? 'Hide attendees'
+                                    : "See who's going"}
+                                </button>
+
+                              </div>
+
+                              {/* ATTENDEES */}
+
+                              {expandedEvent ===
+                                event.id && (
+                                <div className="mt-5 border-t border-[#EDF2F7] pt-5">
+
+                                  {loadingAttendees ===
+                                  event.id ? (
+                                    <div className="flex items-center gap-2 text-sm text-[#52667A]">
+
+                                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-[#D0E6FF] border-t-[#023570]" />
+
+                                      Loading attendees...
+
+                                    </div>
+                                  ) : attendees[
+                                      event.id
+                                    ]?.length ? (
+
+                                    <div>
+
+                                      <p className="mb-3 text-xs font-bold uppercase tracking-wider text-[#52667A]">
+                                        Family members attending
+                                      </p>
+
+                                      <div className="flex flex-wrap gap-2">
+
+                                        {attendees[
+                                          event.id
+                                        ].map(
+                                          (
+                                            person,
+                                            index
+                                          ) => (
+                                            <span
+                                              key={`${event.id}-${person.name}-${index}`}
+                                              className="inline-flex items-center gap-2 rounded-xl bg-[#F3F6FA] px-3 py-1.5 text-xs font-semibold text-[#102A43]"
+                                            >
+
+                                              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#023570] text-[10px] font-black text-white">
+                                                {person.name
+                                                  .charAt(
+                                                    0
+                                                  )
+                                                  .toUpperCase()}
+                                              </span>
+
+                                              {
+                                                person.name
+                                              }
+
+                                            </span>
+                                          )
+                                        )}
+
+                                      </div>
+
+                                    </div>
+                                  ) : (
+                                    <p className="text-sm text-[#52667A]">
+                                      {!isOnline
+                                        ? 'Attendee information is unavailable while offline.'
+                                        : "No one has RSVP'd yet — be the first!"}
+                                    </p>
+                                  )}
+
+                                </div>
                               )}
 
                             </div>
-                          )}
+                          </div>
 
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
+                        </article>
+                      );
+                    }
+                  )}
 
-              </div>
-            </section>
-          ))}
+                </div>
+
+              </section>
+            )
+          )}
 
         </div>
 
-        {/* ========================================================
+        {/* ====================================================
             NO EVENTS
-        ========================================================= */}
+        ==================================================== */}
 
         {filtered.length === 0 && (
           <div className="rounded-3xl bg-white px-6 py-16 text-center shadow-sm ring-1 ring-[#D0E6FF]">
@@ -983,26 +1153,28 @@ export default function EventsPage() {
             </h3>
 
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#52667A]">
-              There are currently no events in this
-              category. Try another filter or check back
-              later.
+              There are currently no events
+              in this category. Try another
+              filter or check back later.
             </p>
 
             <button
-              onClick={() =>
-                setActiveFilter('All')
+              type="button"
+              onClick={
+                handleViewAllEvents
               }
-              className="mt-6 rounded-full bg-[#023570] px-5 py-2.5 text-sm font-bold text-white transition hover:bg-[#2E1065]"
+              className="mt-6 inline-flex items-center gap-2 rounded-full bg-[#023570] px-5 py-2.5 text-sm font-bold text-white transition hover:-translate-y-0.5 hover:bg-[#51A2FF] hover:text-[#023570]"
             >
+              <Calendar size={15} />
               View All Events
             </button>
 
           </div>
         )}
 
-        {/* ========================================================
+        {/* ====================================================
             SUBMIT EVENT CTA
-        ========================================================= */}
+        ==================================================== */}
 
         <section className="relative mt-16 overflow-hidden rounded-3xl bg-[#101828] p-8 text-center text-white md:p-12">
 
@@ -1021,12 +1193,13 @@ export default function EventsPage() {
             </h2>
 
             <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-white/70">
-              Sign in to the family portal to submit
-              a new event for the family calendar and
-              keep everyone connected.
+              Sign in to the family portal to
+              submit a new event for the family
+              calendar and keep everyone connected.
             </p>
 
             <button
+              type="button"
               onClick={() =>
                 handleNav('portal')
               }
@@ -1041,12 +1214,13 @@ export default function EventsPage() {
 
       </main>
 
-      {/* ========================================================
-          SHARED FOOTER
-      ========================================================= */}
+      {/* ======================================================
+          FOOTER
+      ====================================================== */}
 
       <Footer />
 
     </div>
   );
 }
+

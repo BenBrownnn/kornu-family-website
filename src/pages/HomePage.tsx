@@ -1072,24 +1072,27 @@ export default function HomePage() {
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
 
             {[
+              
               {
-                src: '/images/family-gathering.jpg',
-                title: 'Family Reunion 2023',
+                src: '/images/Thanksgiving.webp',
+                title: 'Family Thanksgiving 2023',
                 span: 'md:col-span-2',
               },
               {
-                src: '/images/family-tree.jpg',
-                title: 'Grandparents',
+                src: '/images/Together.webp',
+                title: 'Family Togetherness',
               },
               {
-                src: '/images/gallery1.jpg',
-                title: 'Christmas 2023',
+                src: '/images/Family (2).webp',
+                title: 'Fam',
               },
               {
-                src: '/images/gallery2.jpg',
-                title: 'Family Adventure',
+                src: '/images/Dine.webp',
+                title: 'Family Dinner Celebration',
                 span: 'md:col-span-2',
-              },
+              }, 
+              
+              
             ].map((item, i) => (
 
               <div

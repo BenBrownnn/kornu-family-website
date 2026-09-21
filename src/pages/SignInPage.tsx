@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useStore } from '../store/useStore';
 import {
@@ -102,18 +103,21 @@ export default function SignInPage() {
                 {/* Logo */}
                 <div className="flex items-center gap-3 mb-10">
 
-                  <div className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center bg-white/10 backdrop-blur-md border border-white/20 shadow-lg">
+                  {/* Clean Logo — No Glass Background */}
+                  <div className="w-12 h-12 rounded-2xl overflow-hidden flex items-center justify-center">
 
                     <img
-                      src="/images/kornu-logo.png"
+                      src="/images/kornu-logo.webp"
                       alt="Kornu"
                       className="w-full h-full object-cover"
                       onError={(e) => {
-                        const t = e.target as HTMLImageElement;
+                        const t =
+                          e.target as HTMLImageElement;
 
                         t.style.display = 'none';
 
-                        const parent = t.parentElement;
+                        const parent =
+                          t.parentElement;
 
                         if (parent) {
                           parent.innerHTML =
@@ -245,6 +249,7 @@ export default function SignInPage() {
 
             {/* Back to Home */}
             <button
+              type="button"
               onClick={handleBackHome}
               className="flex items-center gap-2 text-[#52667A] hover:text-[#51a2ff] text-sm mb-10 transition-colors w-fit group"
             >
@@ -320,7 +325,9 @@ export default function SignInPage() {
                   <input
                     type="email"
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) =>
+                      setEmail(e.target.value)
+                    }
                     placeholder="you@kornu.family"
                     className="w-full bg-[#F8FAFC] border border-[#D9E4F0] text-[#102A43] placeholder:text-[#94A3B8] rounded-2xl px-4 py-3.5 outline-none transition-all focus:border-[#51A2FF] focus:ring-4 focus:ring-[#51A2FF]/10 focus:bg-white"
                     required
@@ -340,9 +347,15 @@ export default function SignInPage() {
                 <div className="relative">
 
                   <input
-                    type={showPass ? 'text' : 'password'}
+                    type={
+                      showPass
+                        ? 'text'
+                        : 'password'
+                    }
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) =>
+                      setPassword(e.target.value)
+                    }
                     placeholder="Enter your password"
                     className="w-full bg-[#F8FAFC] border border-[#D9E4F0] text-[#102A43] placeholder:text-[#94A3B8] rounded-2xl px-4 py-3.5 pr-12 outline-none transition-all focus:border-[#51A2FF] focus:ring-4 focus:ring-[#51A2FF]/10 focus:bg-white"
                     required
@@ -350,7 +363,9 @@ export default function SignInPage() {
 
                   <button
                     type="button"
-                    onClick={() => setShowPass(!showPass)}
+                    onClick={() =>
+                      setShowPass(!showPass)
+                    }
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-[#52667A] hover:text-[#023570] transition-colors"
                     aria-label={
                       showPass
@@ -461,3 +476,4 @@ export default function SignInPage() {
     </div>
   );
 }
+

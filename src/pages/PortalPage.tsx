@@ -17,6 +17,8 @@ import {
  TrendingUp,
  Plus,
  Image,
+ ImagePlus,
+ Trash2,
  X,
  Search,
 } from 'lucide-react';
@@ -147,7 +149,8 @@ const portalFeatures = [
 /* -------------------------------------------------------------------------- */
 
 const fallbackAnnouncements: DbAnnouncement[] = [
- {
+ /*
+{
  id: 'fallback-1',
  title: 'Reunion Registration Open!',
  date: '2026-01-15',
@@ -167,7 +170,7 @@ const fallbackAnnouncements: DbAnnouncement[] = [
  date: '2026-01-05',
  author: 'Family Admin',
  priority: 'high',
- },
+ },*/
 ];
 
 /* -------------------------------------------------------------------------- */
@@ -302,6 +305,14 @@ export default function PortalPage() {
 
  const [postingMember, setPostingMember] = useState(false);
  const [memberFormError, setMemberFormError] = useState('');
+
+ /* Existing-member photo editor */
+ const [editingMember, setEditingMember] = useState<DbMember | null>(null);
+ const [editMemberImageFile, setEditMemberImageFile] = useState<File | null>(null);
+ const [editMemberImagePreview, setEditMemberImagePreview] =
+ useState<string | null>(null);
+ const [savingMemberPhoto, setSavingMemberPhoto] = useState(false);
+ const [memberPhotoError, setMemberPhotoError] = useState('');
 
  const isAdmin = currentUser?.role === 'admin';
 
@@ -807,6 +818,244 @@ export default function PortalPage() {
  setMemberImagePreview(
  URL.createObjectURL(selectedFile)
  );
+ };
+
+ /* ------------------------------------------------------------------------ */
+ /* EXISTING MEMBER PHOTO */
+ /* ------------------------------------------------------------------------ */
+
+ const openMemberPhotoEditor = (member: DbMember) => {
+ if (!isAdmin) return;
+
+ setEditingMember(member);
+ setEditMemberImageFile(null);
+ setEditMemberImagePreview(member.image || null);
+ setMemberPhotoError('');
+ };
+
+ const closeMemberPhotoEditor = () => {
+ if (editMemberImagePreview?.startsWith('blob:')) {
+ URL.revokeObjectURL(editMemberImagePreview);
+ }
+
+ setEditingMember(null);
+ setEditMemberImageFile(null);
+ setEditMemberImagePreview(null);
+ setMemberPhotoError('');
+ setSavingMemberPhoto(false);
+ };
+
+ const handleEditMemberImageChange = (
+ event: ChangeEvent<HTMLInputElement>
+ ) => {
+ const selectedFile = event.target.files?.[0];
+
+ if (!selectedFile) return;
+
+ const allowedTypes = [
+ 'image/jpeg',
+ 'image/png',
+ 'image/webp',
+ 'image/gif',
+ ];
+
+ if (!allowedTypes.includes(selectedFile.type)) {
+ setMemberPhotoError(
+ 'Please select a JPG, PNG, WebP, or GIF image.'
+ );
+ return;
+ }
+
+ if (selectedFile.size > 5 * 1024 * 1024) {
+ setMemberPhotoError('The image must be 5MB or smaller.');
+ return;
+ }
+
+ if (editMemberImagePreview?.startsWith('blob:')) {
+ URL.revokeObjectURL(editMemberImagePreview);
+ }
+
+ setMemberPhotoError('');
+ setEditMemberImageFile(selectedFile);
+ setEditMemberImagePreview(
+ URL.createObjectURL(selectedFile)
+ );
+ };
+
+ const getMemberStoragePath = (imageUrl: string | null | undefined) => {
+ if (!imageUrl) return null;
+
+ const marker =
+ '/storage/v1/object/public/gallery-photos/';
+ const markerIndex = imageUrl.indexOf(marker);
+
+ if (markerIndex === -1) return null;
+
+ return decodeURIComponent(
+ imageUrl.slice(markerIndex + marker.length)
+ );
+ };
+
+ const removeMemberStorageFile = async (
+ imageUrl: string | null | undefined
+ ) => {
+ const storagePath = getMemberStoragePath(imageUrl);
+
+ if (!storagePath) return;
+
+ const { error } = await supabase.storage
+ .from('gallery-photos')
+ .remove([storagePath]);
+
+ if (error) {
+ console.warn(
+ 'Member photo storage cleanup failed:',
+ error
+ );
+ }
+ };
+
+ const replaceMemberPhoto = async () => {
+ setMemberPhotoError('');
+
+ if (!currentUser || !isAdmin) {
+ setMemberPhotoError(
+ 'Only family administrators can change member photos.'
+ );
+ return;
+ }
+
+ if (!editingMember || !editMemberImageFile) {
+ setMemberPhotoError('Please select a photo first.');
+ return;
+ }
+
+ try {
+ setSavingMemberPhoto(true);
+
+ const extension =
+ editMemberImageFile.name
+ .split('.')
+ .pop()
+ ?.toLowerCase() || 'jpg';
+
+ const fileName =
+ `members/${currentUser.id}-${editingMember.id}-${Date.now()}.${extension}`;
+
+ const { error: uploadError } =
+ await supabase.storage
+ .from('gallery-photos')
+ .upload(
+ fileName,
+ editMemberImageFile,
+ {
+ cacheControl: '3600',
+ upsert: false,
+ }
+ );
+
+ if (uploadError) {
+ setMemberPhotoError(
+ uploadError.message ||
+ 'Image upload failed. Please try again.'
+ );
+ return;
+ }
+
+ const { data: publicUrlData } =
+ supabase.storage
+ .from('gallery-photos')
+ .getPublicUrl(fileName);
+
+ const newImageUrl =
+ publicUrlData.publicUrl;
+
+ const { error: updateError } =
+ await supabase
+ .from('members')
+ .update({
+ image: newImageUrl,
+ })
+ .eq('id', editingMember.id);
+
+ if (updateError) {
+ await supabase.storage
+ .from('gallery-photos')
+ .remove([fileName]);
+
+ setMemberPhotoError(
+ updateError.message ||
+ 'Unable to save the member photo.'
+ );
+ return;
+ }
+
+ const oldImage = editingMember.image;
+ await removeMemberStorageFile(oldImage);
+
+ await fetchMembers();
+ closeMemberPhotoEditor();
+ } catch (error) {
+ console.error(
+ 'Unexpected member photo error:',
+ error
+ );
+
+ setMemberPhotoError(
+ 'Something went wrong while saving the photo.'
+ );
+ } finally {
+ setSavingMemberPhoto(false);
+ }
+ };
+
+ const removeMemberPhoto = async () => {
+ setMemberPhotoError('');
+
+ if (!currentUser || !isAdmin) {
+ setMemberPhotoError(
+ 'Only family administrators can remove member photos.'
+ );
+ return;
+ }
+
+ if (!editingMember) return;
+
+ try {
+ setSavingMemberPhoto(true);
+
+ const oldImage = editingMember.image;
+
+ const { error } = await supabase
+ .from('members')
+ .update({
+ image: '/images/placeholder.jpg',
+ })
+ .eq('id', editingMember.id);
+
+ if (error) {
+ setMemberPhotoError(
+ error.message ||
+ 'Unable to remove the member photo.'
+ );
+ return;
+ }
+
+ await removeMemberStorageFile(oldImage);
+ await fetchMembers();
+ closeMemberPhotoEditor();
+ } catch (error) {
+ console.error(
+ 'Unexpected member photo removal error:',
+ error
+ );
+
+ setMemberPhotoError(
+ 'Something went wrong while removing the photo.'
+ );
+ } finally {
+ setSavingMemberPhoto(false);
+ }
  };
 
  /* ------------------------------------------------------------------------ */
@@ -2724,6 +2973,24 @@ export default function PortalPage() {
  </div>
  </div>
 
+ {isAdmin && (
+ <button
+ type="button"
+ onClick={() => openMemberPhotoEditor(member)}
+ title={
+ member.image?.includes('/images/placeholder.jpg')
+ ? 'Add member photo'
+ : 'Replace or remove member photo'
+ }
+ className="flex items-center gap-1.5 shrink-0 border border-[#D0E6FF] bg-[#F8FBFF] text-[#023570] hover:bg-[#D0E6FF] px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-colors"
+ >
+ <ImagePlus size={14} />
+ <span className="hidden sm:inline">
+ Photo
+ </span>
+ </button>
+ )}
+
  <span
  className={`text-xs font-semibold px-2.5 py-1 rounded-full flex-shrink-0 ${
  member.generation ===
@@ -4232,6 +4499,124 @@ export default function PortalPage() {
  : 'Post'}
  </button>
  </div>
+ </div>
+ </div>
+ </div>
+ )}
+
+ {/* ==================================================================== */}
+ {/* EXISTING MEMBER PHOTO MODAL */}
+ {/* ==================================================================== */}
+
+ {editingMember && (
+ <div className="fixed inset-0 bg-[#023570]/70 backdrop-blur-md z-[60] flex items-center justify-center p-4">
+ <div className="bg-white rounded-[2rem] max-w-md w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+ <div className="flex items-center justify-between mb-5">
+ <div>
+ <div className="inline-flex items-center gap-2 bg-[#D0E6FF] text-[#023570] px-3 py-1 rounded-full text-xs font-semibold mb-2">
+ <Image size={13} />
+ Member Photo
+ </div>
+ <h2 className="font-['Montserrat'] text-xl font-bold text-gray-900">
+ {editingMember.name}
+ </h2>
+ <p className="text-sm text-gray-500 mt-1">
+ Add, replace, or remove this member's photo.
+ </p>
+ </div>
+
+ <button
+ type="button"
+ onClick={closeMemberPhotoEditor}
+ className="w-9 h-9 rounded-full bg-gray-100 text-gray-500 hover:bg-[#D0E6FF] hover:text-[#023570] flex items-center justify-center transition-colors"
+ disabled={savingMemberPhoto}
+ >
+ <X size={18} />
+ </button>
+ </div>
+
+ <div className="rounded-2xl bg-gradient-to-br from-[#F8FBFF] to-[#F7F1FF] border border-[#D0E6FF] p-5">
+ <div className="flex justify-center">
+ <div className="relative">
+ {editMemberImagePreview ? (
+ <img
+ src={editMemberImagePreview}
+ alt={editingMember.name}
+ className="w-40 h-40 rounded-full object-cover ring-4 ring-white shadow-lg"
+ />
+ ) : (
+ <div className="w-40 h-40 rounded-full bg-gradient-to-br from-[#D0E6FF] to-[#E9D5FF] ring-4 ring-white shadow-lg flex items-center justify-center text-[#023570] text-5xl font-black">
+ {editingMember.name.charAt(0).toUpperCase()}
+ </div>
+ )}
+
+ {editMemberImageFile && (
+ <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 bg-[#51A2FF] text-[#023570] px-3 py-1 rounded-full text-[11px] font-bold whitespace-nowrap shadow-md">
+ New photo selected
+ </span>
+ )}
+ </div>
+ </div>
+
+ <label className="mt-6 flex items-center justify-center gap-2 w-full cursor-pointer bg-gradient-to-r from-[#023570] to-[#6A1B9A] text-white px-4 py-3 rounded-xl font-semibold text-sm hover:shadow-lg transition-all">
+ <ImagePlus size={17} />
+ {editMemberImagePreview ? 'Choose Different Photo' : 'Add Photo'}
+ <input
+ type="file"
+ accept="image/jpeg,image/png,image/webp,image/gif"
+ onChange={handleEditMemberImageChange}
+ className="hidden"
+ disabled={savingMemberPhoto}
+ />
+ </label>
+
+ <p className="text-center text-xs text-gray-400 mt-3">
+ JPG, PNG, WebP or GIF · Maximum 5MB
+ </p>
+ </div>
+
+ {memberPhotoError && (
+ <div className="mt-4 bg-red-50 border border-red-200 rounded-xl p-3 text-red-600 text-sm">
+ {memberPhotoError}
+ </div>
+ )}
+
+ <div className="flex gap-3 mt-5">
+ <button
+ type="button"
+ onClick={closeMemberPhotoEditor}
+ disabled={savingMemberPhoto}
+ className="flex-1 border border-gray-200 rounded-xl py-3 text-gray-600 font-semibold hover:bg-gray-50 transition-colors disabled:opacity-50"
+ >
+ Cancel
+ </button>
+
+ {editingMember.image &&
+ !editingMember.image.includes('/images/placeholder.jpg') &&
+ !editMemberImageFile && (
+ <button
+ type="button"
+ onClick={() => void removeMemberPhoto()}
+ disabled={savingMemberPhoto}
+ className="flex-1 border border-red-200 bg-red-50 text-red-600 rounded-xl py-3 font-semibold hover:bg-red-100 transition-colors disabled:opacity-50 inline-flex items-center justify-center gap-2"
+ >
+ <Trash2 size={16} />
+ {savingMemberPhoto ? 'Removing...' : 'Remove Photo'}
+ </button>
+ )}
+
+ <button
+ type="button"
+ onClick={() => void replaceMemberPhoto()}
+ disabled={savingMemberPhoto || !editMemberImageFile}
+ className="flex-1 bg-gradient-to-r from-[#023570] to-[#51A2FF] text-white rounded-xl py-3 font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+ >
+ {savingMemberPhoto
+ ? 'Saving...'
+ : editingMember.image?.includes('/images/placeholder.jpg')
+ ? 'Add Photo'
+ : 'Save Photo'}
+ </button>
  </div>
  </div>
  </div>

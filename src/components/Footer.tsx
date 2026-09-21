@@ -56,7 +56,7 @@ export default function Footer() {
               <div className="w-12 h-12 flex items-center justify-center">
 
                 <img
-                  src="/images/kornu-logo.png"
+                  src="/images/kornu-logo.webp"
                   alt="Kornu"
                   className="w-full h-full object-cover"
                   onError={(e) => {

@@ -78,11 +78,65 @@ export default function Navbar() {
               onClick={() => handleNav('home')}
               className="flex items-center gap-3 group"
             >
-              <div className="relative w-11 h-11 rounded-full overflow-hidden bg-white shadow-md group-hover:shadow-[0_6px_18px_rgba(81,162,255,0.35)] transition-shadow duration-300">
+              {/* Glass Logo Circle */}
+              <div
+                className="
+                  relative
+                  w-11
+                  h-11
+                  rounded-full
+                  overflow-hidden
+                  flex
+                  items-center
+                  justify-center
+                  bg-white/35
+                  backdrop-blur-md
+                  backdrop-saturate-150
+                  border
+                  border-white/70
+                  ring-1
+                  ring-[#51A2FF]/10
+                  shadow-[0_4px_16px_rgba(2,53,112,0.12)]
+                  transition-all
+                  duration-300
+                  group-hover:bg-white/50
+                  group-hover:border-white/90
+                  group-hover:ring-[#51A2FF]/25
+                  group-hover:shadow-[0_6px_18px_rgba(81,162,255,0.30)]
+                "
+              >
+                {/* Subtle glass highlight */}
+                <span
+                  className="
+                    absolute
+                    top-1
+                    left-2
+                    right-2
+                    h-2.5
+                    rounded-full
+                    bg-white/35
+                    blur-sm
+                    pointer-events-none
+                    z-0
+                  "
+                />
+
+                {/* Kornu Family Logo */}
                 <img
-                  src="/images/kornu-logo.png"
+                  src="/images/kornu-logo.webp"
                   alt="Kornu Family Crest"
-                  className="w-full h-full object-cover"
+                  className="
+                    relative
+                    z-10
+                    w-full
+                    h-full
+                    object-contain
+                    p-1.5
+                    drop-shadow-[0_1px_2px_rgba(2,53,112,0.18)]
+                    transition-transform
+                    duration-300
+                    group-hover:scale-[1.03]
+                  "
                   onError={(e) => {
                     const target = e.target as HTMLImageElement;
 
@@ -93,7 +147,8 @@ export default function Navbar() {
 
                     if (parent) {
                       parent.classList.add(
-                        'bg-white',
+                        'bg-white/50',
+                        'backdrop-blur-md',
                         'flex',
                         'items-center',
                         'justify-center'

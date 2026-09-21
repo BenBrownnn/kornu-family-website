@@ -155,6 +155,7 @@ export const familyMembers: FamilyMember[] = [
 
 
 export const familyEvents: FamilyEvent[] = [
+  /*
   {
     id: '1',
     title: 'Kornu Annual Family Reunion 2025',
@@ -202,6 +203,7 @@ export const familyEvents: FamilyEvent[] = [
     type: 'memorial',
     rsvpCount: 35,
   },
+  */
 ];
 
 export const familyStories: FamilyStory[] = [
@@ -263,53 +265,7 @@ Those Sundays built me. They built all of us. And I carry that table wherever I 
   },
 ];
 
+
 export const galleryItems: GalleryItem[] = [
-  {
-    id: '1',
-    src: '/images/memory1.webp',
-    title: 'Family Reunion 1995',
-    date: 'August 1995',
-    category: 'Reunions',
-    description: 'Our beautiful annual family gathering in Tema',
-  },
-  {
-    id: '2',
-    src: '/images/mom.jpg',
-    title: 'Sunday Family Portrait',
-    date: 'December 2023',
-    category: 'Portraits',
-    description: 'Three generations together in the family compound',
-  },
-  {
-    id: '3',
-    src: '/images/family-tree.jpg',
-    title: 'Grandparents & Grandchildren',
-    date: 'June 2023',
-    category: 'Portraits',
-    description: 'Elder Kweku with his beloved grandchildren',
-  },
-  {
-    id: '4',
-    src: '/images/gallery1.jpg',
-    title: 'Christmas 2023',
-    date: 'December 2023',
-    category: 'Celebrations',
-    description: 'Festive celebrations at the family compound',
-  },
-  {
-    id: '5',
-    src: '/images/gallery2.jpg',
-    title: 'Family Adventure',
-    date: 'July 2023',
-    category: 'Adventures',
-    description: 'The Kornu family exploring the beautiful outdoors',
-  },
-  {
-    id: '6',
-    src: '/images/gallery3.jpg',
-    title: 'Cooking with Mama',
-    date: 'March 2024',
-    category: 'Traditions',
-    description: 'Passing down traditional recipes to the next generation',
-  },
+  
 ];
